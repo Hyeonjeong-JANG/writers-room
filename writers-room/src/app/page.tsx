@@ -115,26 +115,25 @@ export default function LandingPage() {
 
           <div className="mt-12 grid gap-6 md:grid-cols-3">
             {sampleStories.map((story) => (
-              <Card
-                key={story.title}
-                className="transition-all hover:-translate-y-0.5 hover:shadow-md"
-              >
-                <div className="from-primary/20 to-primary/5 aspect-video w-full rounded-t-lg bg-gradient-to-br" />
-                <CardContent className="p-4">
-                  <div className="flex gap-1.5">
-                    {story.genre.map((g) => (
-                      <Badge key={g} variant="secondary" className="text-xs">
-                        {g}
-                      </Badge>
-                    ))}
-                  </div>
-                  <h3 className="mt-2 text-lg font-semibold">{story.title}</h3>
-                  <p className="text-muted-foreground mt-1 text-sm">{story.synopsis}</p>
-                  <p className="text-muted-foreground mt-3 text-xs">
-                    {story.chapters}화 {story.status}
-                  </p>
-                </CardContent>
-              </Card>
+              <Link key={story.title} href="/stories">
+                <Card className="h-full transition-all hover:-translate-y-0.5 hover:shadow-md">
+                  <div className="from-primary/20 to-primary/5 aspect-video w-full rounded-t-lg bg-gradient-to-br" />
+                  <CardContent className="p-4">
+                    <div className="flex gap-1.5">
+                      {story.genre.map((g) => (
+                        <Badge key={g} variant="secondary" className="text-xs">
+                          {g}
+                        </Badge>
+                      ))}
+                    </div>
+                    <h3 className="mt-2 text-lg font-semibold">{story.title}</h3>
+                    <p className="text-muted-foreground mt-1 text-sm">{story.synopsis}</p>
+                    <p className="text-muted-foreground mt-3 text-xs">
+                      {story.chapters}화 {story.status}
+                    </p>
+                  </CardContent>
+                </Card>
+              </Link>
             ))}
           </div>
         </div>

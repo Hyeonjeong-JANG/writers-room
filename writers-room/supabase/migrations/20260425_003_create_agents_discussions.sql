@@ -236,7 +236,7 @@ begin
 - 답변은 300자 이내로 간결하게 합니다',
     '웹소설 전문 프로듀서. 스토리 방향 설정과 트렌드 분석에 특화.',
     true,
-    'Qwen/Qwen3-30B-A3B-fast',
+    'qwen3-235b-a22b-instruct-2507',
     null
   ),
   (
@@ -260,7 +260,7 @@ begin
 - 답변은 300자 이내로 간결하게 합니다',
     '감성적인 문체와 캐릭터 묘사에 강한 웹소설 전문 작가.',
     true,
-    'Qwen/Qwen3-30B-A3B-fast',
+    'qwen3-235b-a22b-instruct-2507',
     null
   ),
   (
@@ -284,7 +284,7 @@ begin
 - 답변은 300자 이내로 간결하게 합니다',
     '꼼꼼한 검토와 건설적 피드백이 강점인 편집자.',
     true,
-    'Qwen/Qwen3-30B-A3B-fast',
+    'qwen3-235b-a22b-instruct-2507',
     null
   );
 end;

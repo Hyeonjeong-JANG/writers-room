@@ -117,8 +117,8 @@ create policy "Authenticated users can update trust scores"
 -- ============================================
 create trigger set_nansen_wallet_cache_updated_at
   before update on public.nansen_wallet_cache
-  for each row execute function public.set_updated_at();
+  for each row execute function public.handle_updated_at();
 
 create trigger set_agent_trust_scores_updated_at
   before update on public.agent_trust_scores
-  for each row execute function public.set_updated_at();
+  for each row execute function public.handle_updated_at();
