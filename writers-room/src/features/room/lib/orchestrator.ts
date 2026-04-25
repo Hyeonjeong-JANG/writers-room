@@ -1,4 +1,5 @@
 import { createFlockClient, getDefaultModel } from '@/lib/flock/client'
+import { fetchTrendKeywords } from '@/lib/selanet/client'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { AgentRow, DiscussionLogEntry, DiscussionResult, GeneratedChapter } from './schemas'
 import {
@@ -75,7 +76,9 @@ export async function buildContext(
     characters: story.characters,
     previousChapters,
     adoptedComments,
-    trendKeywords: [], // Phase 3에서는 Selanet 미연동, 빈 배열
+    trendKeywords: await fetchTrendKeywords(story.genre).then((r) =>
+      r.keywords.map((k) => k.keyword),
+    ),
   }
 }
 
