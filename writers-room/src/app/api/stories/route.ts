@@ -121,6 +121,22 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // 기본 에이전트 3명 자동 배치
+    const { data: defaultAgents } = await supabase
+      .from('agents')
+      .select('id')
+      .eq('is_default', true)
+      .eq('is_active', true)
+
+    if (defaultAgents && defaultAgents.length > 0) {
+      await supabase.from('story_agents').insert(
+        defaultAgents.map((agent) => ({
+          story_id: data.id,
+          agent_id: agent.id,
+        })),
+      )
+    }
+
     return NextResponse.json({ data }, { status: 201 })
   } catch {
     return NextResponse.json(

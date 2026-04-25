@@ -87,29 +87,29 @@
 
 **목표**: 에이전트 토론, FLock API 호출, Selanet 트렌드 주입, 챕터 초안 생성 파이프라인 완성
 
-- [ ] agents 테이블 마이그레이션 (기본 에이전트 시드 포함)
-- [ ] story_agents 테이블 마이그레이션
-- [ ] discussions 테이블 마이그레이션
-- [ ] selanet_trend_cache 테이블 마이그레이션
-- [ ] FLock API 클라이언트 구현 (OpenAI SDK, base_url 변경)
+- [x] agents 테이블 마이그레이션 (기본 에이전트 시드 포함)
+- [x] story_agents 테이블 마이그레이션
+- [x] discussions 테이블 마이그레이션
+- [x] selanet_trend_cache 테이블 마이그레이션
+- [x] FLock API 클라이언트 구현 (OpenAI SDK, base_url 변경)
 - [ ] Selanet API 클라이언트 구현 (장르별 트렌드 수집)
-- [ ] 에이전트 시스템 프롬프트 템플릿 (PD, 작가, 편집자)
-- [ ] 멀티 에이전트 오케스트레이터 구현
-  - [ ] 컨텍스트 구성 (이전 챕터 + 세계관 + 캐릭터 + Selanet 트렌드)
-  - [ ] 순차 호출: PD -> 작가 -> 편집자 (라운드 반복)
-  - [ ] 토론 요약 생성
+- [x] 에이전트 시스템 프롬프트 템플릿 (PD, 작가, 편집자)
+- [x] 멀티 에이전트 오케스트레이터 구현
+  - [x] 컨텍스트 구성 (이전 챕터 + 세계관 + 캐릭터 + Selanet 트렌드)
+  - [x] 순차 호출: PD -> 작가 -> 편집자 (라운드 반복)
+  - [x] 토론 요약 생성
 - [ ] API: GET /api/selanet/trends (장르별 트렌드)
-- [ ] API: POST /api/room/discuss (토론 시작, 트렌드 자동 주입)
-- [ ] API: GET /api/room/discuss/[id] (토론 상세/로그)
-- [ ] API: POST /api/room/generate (챕터 초안 생성)
-- [ ] 작가방 UI (채팅 스타일)
-  - [ ] 좌측 사이드바: 에이전트 목록 + 트렌드 패널
-  - [ ] 채팅 영역: 토론 로그 (역할별 색상 구분)
-  - [ ] 토론 진행 중 로딩 상태 (프로그레스 바)
-  - [ ] 토론 요약 표시
-  - [ ] 챕터 초안 미리보기 + 편집
-- [ ] 기본 에이전트 3명 자동 배치 (스토리 생성 시)
-- [ ] 컨텍스트 윈도우 관리 (긴 스토리 요약 + 최근 챕터)
+- [x] API: POST /api/room/discuss (토론 시작, 트렌드 자동 주입)
+- [x] API: GET /api/room/discuss/[id] (토론 상세/로그)
+- [x] API: POST /api/room/generate (챕터 초안 생성)
+- [x] 작가방 UI (채팅 스타일)
+  - [x] 좌측 사이드바: 에이전트 목록 + 트렌드 패널
+  - [x] 채팅 영역: 토론 로그 (역할별 색상 구분)
+  - [x] 토론 진행 중 로딩 상태 (프로그레스 바)
+  - [x] 토론 요약 표시
+  - [x] 챕터 초안 미리보기 + 편집
+- [x] 기본 에이전트 3명 자동 배치 (스토리 생성 시)
+- [x] 컨텍스트 윈도우 관리 (긴 스토리 요약 + 최근 챕터)
 
 **API 참조**: [API Specs](../03_Technical_Specs/02_API_SPECS.md) - Room API, FLock 호출 패턴
 
