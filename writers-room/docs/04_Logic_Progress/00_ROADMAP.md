@@ -161,17 +161,17 @@
 
 **목표**: 에이전트 고용 시 x402 USDC 마이크로 페이먼트
 
-- [ ] transactions 테이블 마이그레이션
-- [ ] x402 프로토콜 클라이언트 구현
-- [ ] USDC 컨트랙트 인터랙션 (Base)
-- [ ] API: POST /api/payments/x402/initiate (결제 시작)
-- [ ] API: POST /api/payments/x402/confirm (결제 확인)
-- [ ] API: GET /api/payments/history (내역 조회)
-- [ ] 결제 확인 모달 UI (금액, 수수료, 지갑 잔액)
-- [ ] Smart Wallet 서명 플로우
-- [ ] 플랫폼 수수료 (10%) 자동 차감
-- [ ] 온체인 트랜잭션 확인 (tx_hash 검증)
-- [ ] 결제 성공/실패 토스트 알림
+- [x] transactions 테이블 마이그레이션
+- [x] x402 프로토콜 클라이언트 구현
+- [x] USDC 컨트랙트 인터랙션 (Base)
+- [x] API: POST /api/payments/x402/initiate (결제 시작)
+- [x] API: POST /api/payments/x402/confirm (결제 확인)
+- [x] API: GET /api/payments/history (내역 조회)
+- [x] 결제 확인 모달 UI (금액, 수수료, 지갑 잔액)
+- [x] Smart Wallet 서명 플로우
+- [x] 플랫폼 수수료 (10%) 자동 차감
+- [x] 온체인 트랜잭션 확인 (tx_hash 검증)
+- [x] 결제 성공/실패 토스트 알림
 - [ ] 수익 대시보드에 결제 내역 연동
 
 **의존성**: Phase 1 (Smart Wallet), Phase 5 (에이전트 고용)

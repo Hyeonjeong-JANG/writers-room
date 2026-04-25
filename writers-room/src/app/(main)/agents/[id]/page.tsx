@@ -2,25 +2,49 @@
 
 import { use, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Star, Users, Zap } from 'lucide-react'
+import { ArrowLeft, Star, Users, Zap, BookOpen } from 'lucide-react'
+import { toast } from 'sonner'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog'
 import { useAuth } from '@/hooks/use-auth'
-import { useAgent, useReviewAgent } from '@/features/agent/hooks/use-agents'
+import { useAgent, useHireAgent, useReviewAgent } from '@/features/agent/hooks/use-agents'
 import { ROLE_LABELS, ROLE_COLORS } from '@/features/agent/lib/schemas'
+import { PaymentModal } from '@/features/payment/components/payment-modal'
+import useSWR from 'swr'
+
+const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
 export default function AgentDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const { user } = useAuth()
   const { agent, isLoading, mutate } = useAgent(id)
   const { submitReview, isSubmitting: isReviewing } = useReviewAgent()
+  const { hireAgent, isHiring } = useHireAgent()
 
   const [rating, setRating] = useState(5)
   const [reviewText, setReviewText] = useState('')
+
+  // 고용 플로우 상태
+  const [showStorySelect, setShowStorySelect] = useState(false)
+  const [selectedStoryId, setSelectedStoryId] = useState<string | null>(null)
+  const [showPaymentModal, setShowPaymentModal] = useState(false)
+
+  // 유저의 스토리 목록 (고용 시 선택)
+  const { data: myStoriesData } = useSWR<{
+    data: { id: string; title: string }[]
+  }>(user && showStorySelect ? '/api/stories?mine=true&limit=50' : null, fetcher)
+  const myStories = myStoriesData?.data ?? []
 
   if (isLoading) {
     return (
@@ -40,6 +64,38 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
         </Link>
       </div>
     )
+  }
+
+  const handleHireClick = () => {
+    if (!user) {
+      toast.error('로그인이 필요합니다')
+      return
+    }
+    setShowStorySelect(true)
+  }
+
+  const handleStorySelect = async (storyId: string) => {
+    setSelectedStoryId(storyId)
+
+    if (agent.price_usdc > 0) {
+      // 유료 에이전트 → 결제 모달
+      setShowStorySelect(false)
+      setShowPaymentModal(true)
+    } else {
+      // 무료 에이전트 → 바로 고용
+      const result = await hireAgent(id, storyId)
+      if (result) {
+        toast.success(`${agent.name}이(가) 스토리에 배치되었습니다`)
+        setShowStorySelect(false)
+        mutate()
+      }
+    }
+  }
+
+  const handlePaymentSuccess = () => {
+    setShowPaymentModal(false)
+    setSelectedStoryId(null)
+    mutate()
   }
 
   const handleReview = async () => {
@@ -112,9 +168,16 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
             </div>
           </div>
 
-          <div className="mt-4 flex items-center gap-2 border-t pt-4">
-            <Zap className="text-muted-foreground h-4 w-4" />
-            <span className="text-muted-foreground text-sm">모델: {agent.flock_model}</span>
+          <div className="mt-4 flex items-center justify-between border-t pt-4">
+            <div className="flex items-center gap-2">
+              <Zap className="text-muted-foreground h-4 w-4" />
+              <span className="text-muted-foreground text-sm">모델: {agent.flock_model}</span>
+            </div>
+            {user && (
+              <Button onClick={handleHireClick} disabled={isHiring}>
+                {isHiring ? '처리 중...' : '고용하기'}
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -182,6 +245,53 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
           )}
         </CardContent>
       </Card>
+
+      {/* 스토리 선택 다이얼로그 */}
+      <Dialog open={showStorySelect} onOpenChange={setShowStorySelect}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>스토리 선택</DialogTitle>
+            <DialogDescription>{agent.name}을(를) 배치할 스토리를 선택하세요</DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[300px] space-y-2 overflow-y-auto">
+            {myStories.length === 0 ? (
+              <p className="text-muted-foreground py-6 text-center text-sm">
+                작성한 스토리가 없습니다.{' '}
+                <Link href="/stories/create" className="text-indigo-600 hover:underline">
+                  스토리 만들기
+                </Link>
+              </p>
+            ) : (
+              myStories.map((story) => (
+                <button
+                  key={story.id}
+                  onClick={() => handleStorySelect(story.id)}
+                  className="hover:bg-accent flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors"
+                >
+                  <BookOpen className="h-5 w-5 shrink-0 text-indigo-500" />
+                  <span className="text-sm font-medium">{story.title}</span>
+                </button>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* 결제 모달 */}
+      {selectedStoryId && (
+        <PaymentModal
+          isOpen={showPaymentModal}
+          onClose={() => {
+            setShowPaymentModal(false)
+            setSelectedStoryId(null)
+          }}
+          onSuccess={handlePaymentSuccess}
+          agentId={id}
+          agentName={agent.name}
+          storyId={selectedStoryId}
+          amount={agent.price_usdc}
+        />
+      )}
     </div>
   )
 }

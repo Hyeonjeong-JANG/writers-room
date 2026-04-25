@@ -21,10 +21,42 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const { genre, status, sort, page, limit } = parsed.data
+    const { genre, status, sort, mine, page, limit } = parsed.data
     const offset = (page - 1) * limit
 
     const supabase = await createClient()
+
+    // mine=true 일 때 인증된 유저의 스토리만 필터
+    if (mine === 'true') {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) {
+        return NextResponse.json(
+          { error: { code: 'UNAUTHORIZED', message: '로그인이 필요합니다' } },
+          { status: 401 },
+        )
+      }
+
+      const { data, count, error } = await supabase
+        .from('stories')
+        .select('id, title, status, genre, created_at', { count: 'exact' })
+        .eq('creator_id', user.id)
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1)
+
+      if (error) {
+        return NextResponse.json(
+          { error: { code: 'DB_ERROR', message: error.message } },
+          { status: 500 },
+        )
+      }
+
+      return NextResponse.json({
+        data,
+        meta: { page, limit, total: count ?? 0 },
+      })
+    }
 
     let query = supabase
       .from('stories')
