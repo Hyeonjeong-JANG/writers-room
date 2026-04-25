@@ -19,16 +19,15 @@ test.describe('스토리 플로우', () => {
     await page.goto('/stories')
 
     // 장르 필터 존재 확인
-    await expect(page.locator('text=전체')).toBeVisible()
-    await expect(page.locator('text=로맨스')).toBeVisible()
-    await expect(page.locator('text=판타지')).toBeVisible()
+    await expect(page.getByText('로맨스', { exact: true })).toBeVisible()
+    await expect(page.getByText('판타지', { exact: true })).toBeVisible()
 
     // 정렬 토글 확인
-    await expect(page.locator('text=최신순')).toBeVisible()
-    await expect(page.locator('text=인기순')).toBeVisible()
+    await expect(page.getByText('최신순', { exact: true })).toBeVisible()
+    await expect(page.getByText('인기순', { exact: true })).toBeVisible()
 
     // 장르 필터 클릭
-    await page.click('text=판타지')
+    await page.getByText('판타지', { exact: true }).click()
 
     // 로딩 후 결과 확인 (빈 결과든 카드든)
     await page.waitForTimeout(1000)

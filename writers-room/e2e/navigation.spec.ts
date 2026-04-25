@@ -58,9 +58,9 @@ test.describe('모바일 레이아웃', () => {
     await expect(tabBar).toBeVisible()
 
     // 탭 아이템 확인
-    await expect(page.locator('text=홈')).toBeVisible()
-    await expect(page.locator('text=스토리')).toBeVisible()
-    await expect(page.locator('text=에이전트')).toBeVisible()
+    await expect(tabBar.getByText('홈')).toBeVisible()
+    await expect(tabBar.getByText('스토리', { exact: true })).toBeVisible()
+    await expect(tabBar.getByText('에이전트', { exact: true })).toBeVisible()
   })
 
   test('모바일에서 스토리 카드 단일 컬럼', async ({ page }) => {
