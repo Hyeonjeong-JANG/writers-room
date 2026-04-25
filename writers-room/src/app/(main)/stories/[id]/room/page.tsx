@@ -70,6 +70,26 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
         const chapter = await generateChapter(result.discussionId)
         if (chapter) {
           setGeneratedChapter(chapter)
+
+          // 자동 발행
+          setAutoStartStatus('첫 챕터 발행 중...')
+          try {
+            const res = await fetch(`/api/stories/${storyId}/chapters`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                title: chapter.title,
+                content: chapter.content,
+                discussionId: result.discussionId,
+              }),
+            })
+            if (res.ok) {
+              router.push(`/stories/${storyId}`)
+              return
+            }
+          } catch {
+            // 발행 실패 시 미리보기로 폴백
+          }
         }
       }
       setAutoStartStatus(null)

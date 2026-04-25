@@ -2,6 +2,7 @@ import { createFlockClient, getDefaultModel } from '@/lib/flock/client'
 import { fetchTrendKeywords } from '@/lib/selanet/client'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { AgentRow, DiscussionLogEntry, DiscussionResult, GeneratedChapter } from './schemas'
+import type { ContributionType } from '@/features/onchain/lib/schemas'
 import {
   type StoryContext,
   buildAgentSystemPrompt,
@@ -353,5 +354,207 @@ export async function generateChapter(
     title: `${nextNumber}화`,
     content,
     wordCount: content.length,
+  }
+}
+
+// ============================================
+// 자동 회차 생성 (Cron용)
+// ============================================
+
+/**
+ * 48시간 마감 후 자동으로 댓글 분석 → 토론 → 챕터 생성/발행
+ */
+export async function autoGenerateNextChapter(
+  supabase: SupabaseClient,
+  storyId: string,
+  chapterId: string,
+  creatorId: string,
+): Promise<{ chapterId: string; chapterNumber: number }> {
+  // 1. 해당 챕터의 모든 댓글 조회 (아직 채택되지 않은 것)
+  const { data: comments } = await supabase
+    .from('comments')
+    .select('id, content, comment_type, like_count')
+    .eq('chapter_id', chapterId)
+    .eq('is_adopted', false)
+    .order('like_count', { ascending: false })
+
+  // 2. 스토리 정보
+  const { data: story } = await supabase
+    .from('stories')
+    .select('title, synopsis')
+    .eq('id', storyId)
+    .single()
+
+  if (!story) throw new Error(`스토리 ${storyId}를 찾을 수 없습니다`)
+
+  let adoptedIds: string[] = []
+
+  // 3. 댓글이 있으면 AI 분석으로 선별
+  if (comments && comments.length > 0) {
+    const flock = createFlockClient()
+    const commentsText = comments.map((c, i) => `[${i + 1}] ${c.content}`).join('\n')
+
+    const response = await flock.chat.completions.create({
+      model: getDefaultModel(),
+      messages: [
+        {
+          role: 'system',
+          content: `당신은 웹소설 편집 AI입니다. 독자 댓글 중에서 스토리 발전에 유용한 아이디어를 선별합니다.
+
+## 스토리 정보
+- 제목: ${story.title}
+- 시놉시스: ${story.synopsis}
+
+## 분석 기준
+1. 스토리 세계관과의 일관성
+2. 캐릭터 발전 기여도
+3. 독창성과 흥미로움
+4. 구현 가능성
+
+## 응답 형식
+반드시 아래 JSON 형식으로만 응답하세요. 다른 텍스트는 포함하지 마세요.
+{
+  "adopted": [
+    {
+      "index": 1,
+      "relevanceScore": 0.85,
+      "reason": "채택 이유 (한 줄)"
+    }
+  ]
+}
+
+선별 기준: relevanceScore가 0.6 이상인 댓글만 포함하세요. 최대 5개까지 선별합니다.`,
+        },
+        {
+          role: 'user',
+          content: `다음 독자 댓글들을 분석하고 스토리에 유용한 아이디어를 선별해주세요:\n\n${commentsText}`,
+        },
+      ],
+      temperature: 0.3,
+    })
+
+    const aiContent = response.choices[0]?.message?.content ?? '{}'
+    let adopted: Array<{ index: number; relevanceScore: number; reason: string }> = []
+    try {
+      const jsonMatch = aiContent.match(/\{[\s\S]*\}/)
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0])
+        adopted = parsed.adopted ?? []
+      }
+    } catch {
+      // JSON 파싱 실패 시 빈 배열
+    }
+
+    adoptedIds = adopted
+      .filter((a) => a.index >= 1 && a.index <= comments.length)
+      .map((a) => comments[a.index - 1].id)
+
+    // 채택된 댓글 DB 업데이트
+    if (adoptedIds.length > 0) {
+      await supabase.from('comments').update({ is_adopted: true }).in('id', adoptedIds)
+
+      // 기여 기록
+      const { data: adoptedRows } = await supabase
+        .from('comments')
+        .select('id, user_id, chapter_id')
+        .in('id', adoptedIds)
+
+      if (adoptedRows) {
+        const { data: chapters } = await supabase
+          .from('chapters')
+          .select('id, chapter_number')
+          .in('id', [...new Set(adoptedRows.map((c) => c.chapter_id))])
+
+        const chapterMap = new Map(chapters?.map((ch) => [ch.id, ch.chapter_number]) ?? [])
+
+        for (const comment of adoptedRows) {
+          await recordContributionWithClient(supabase, {
+            userId: comment.user_id,
+            storyId,
+            contributionType: 'comment_adopted',
+            context: {
+              comment_id: comment.id,
+              chapter_id: comment.chapter_id,
+              chapter_number: chapterMap.get(comment.chapter_id) ?? null,
+            },
+          })
+        }
+      }
+    }
+  }
+
+  // 4. 토론 실행
+  const discussionResult = await runDiscussion(supabase, storyId, creatorId, adoptedIds)
+
+  // 5. 챕터 생성
+  const generated = await generateChapter(supabase, discussionResult.discussionId)
+
+  // 6. 챕터 DB insert (published)
+  const { data: lastChapter } = await supabase
+    .from('chapters')
+    .select('chapter_number')
+    .eq('story_id', storyId)
+    .order('chapter_number', { ascending: false })
+    .limit(1)
+    .single()
+
+  const nextNumber = (lastChapter?.chapter_number ?? 0) + 1
+
+  const { data: newChapter, error: insertError } = await supabase
+    .from('chapters')
+    .insert({
+      story_id: storyId,
+      chapter_number: nextNumber,
+      title: generated.title,
+      content: generated.content,
+      discussion_id: discussionResult.discussionId,
+      status: 'published',
+      published_at: new Date().toISOString(),
+    })
+    .select('id')
+    .single()
+
+  if (insertError || !newChapter) {
+    throw new Error(`챕터 insert 실패: ${insertError?.message}`)
+  }
+
+  // 채택 댓글에 adopted_in_chapter 업데이트
+  if (adoptedIds.length > 0) {
+    await supabase.from('comments').update({ adopted_in_chapter: nextNumber }).in('id', adoptedIds)
+  }
+
+  // 기여 기록
+  await recordContributionWithClient(supabase, {
+    userId: creatorId,
+    storyId,
+    contributionType: 'chapter_generated',
+    context: {
+      chapter_id: newChapter.id,
+      chapter_number: nextNumber,
+    },
+  })
+
+  return { chapterId: newChapter.id, chapterNumber: nextNumber }
+}
+
+/** 주어진 supabase 클라이언트로 기여 기록 (cron 환경에서 사용) */
+async function recordContributionWithClient(
+  supabase: SupabaseClient,
+  params: {
+    userId: string
+    storyId: string
+    contributionType: ContributionType
+    context: Record<string, unknown>
+  },
+): Promise<void> {
+  try {
+    await supabase.from('contributions').insert({
+      user_id: params.userId,
+      story_id: params.storyId,
+      contribution_type: params.contributionType,
+      context: params.context,
+    })
+  } catch (err) {
+    console.error('[auto-chapter] contribution record failed:', err)
   }
 }

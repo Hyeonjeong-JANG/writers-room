@@ -4,7 +4,7 @@ import { Heart, CheckCircle2 } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { COMMENT_TYPE_LABELS, type CommentRow } from '@/features/comment/lib/schemas'
+import type { CommentRow } from '@/features/comment/lib/schemas'
 
 interface CommentCardProps {
   comment: CommentRow
@@ -15,7 +15,6 @@ interface CommentCardProps {
 export function CommentCard({ comment, onLike, isLiking }: CommentCardProps) {
   const displayName = comment.user?.display_name ?? '익명'
   const initial = displayName.charAt(0).toUpperCase()
-  const isIdea = comment.comment_type !== 'general'
   const timeAgo = getTimeAgo(comment.created_at)
 
   return (
@@ -28,11 +27,6 @@ export function CommentCard({ comment, onLike, isLiking }: CommentCardProps) {
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium">{displayName}</span>
           <span className="text-muted-foreground text-xs">{timeAgo}</span>
-          {isIdea && (
-            <Badge variant="secondary" className="text-xs">
-              {COMMENT_TYPE_LABELS[comment.comment_type]}
-            </Badge>
-          )}
           {comment.is_adopted && (
             <Badge className="gap-1 bg-emerald-500 text-xs text-white hover:bg-emerald-600">
               <CheckCircle2 className="h-3 w-3" />

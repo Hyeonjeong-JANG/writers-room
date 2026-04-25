@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useChapter, useStory } from '@/features/story/hooks/use-stories'
 import { useAuth } from '@/hooks/use-auth'
 import { CommentSection } from '@/features/comment/components/comment-section'
+import { ChapterCountdown } from '@/features/comment/components/chapter-countdown'
 
 export default function ChapterReaderPage({
   params,
@@ -105,6 +106,13 @@ export default function ChapterReaderPage({
           )}
         </div>
       </nav>
+
+      {/* 48시간 카운트다운 (최신 챕터에만 표시) */}
+      {!chapter.hasNext && chapter.published_at && (
+        <div className="mt-8">
+          <ChapterCountdown publishedAt={chapter.published_at} />
+        </div>
+      )}
 
       {/* Comments */}
       <CommentSection chapterId={chapter.id} storyId={id} isCreator={isCreator} />

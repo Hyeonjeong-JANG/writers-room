@@ -58,12 +58,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 해당 챕터의 아이디어 타입 댓글 조회 (아직 채택되지 않은 것만)
+    // 해당 챕터의 모든 댓글 조회 (아직 채택되지 않은 것만)
     const { data: comments, error: commentsError } = await supabase
       .from('comments')
       .select('id, content, comment_type, like_count')
       .eq('chapter_id', chapterId)
-      .in('comment_type', ['idea_plot', 'idea_character', 'idea_setting'])
       .eq('is_adopted', false)
       .order('like_count', { ascending: false })
 
@@ -82,9 +81,7 @@ export async function POST(request: NextRequest) {
 
     // FLock API로 댓글 분석
     const flock = createFlockClient()
-    const commentsText = comments
-      .map((c, i) => `[${i + 1}] (${c.comment_type}) ${c.content}`)
-      .join('\n')
+    const commentsText = comments.map((c, i) => `[${i + 1}] ${c.content}`).join('\n')
 
     const response = await flock.chat.completions.create({
       model: getDefaultModel(),
