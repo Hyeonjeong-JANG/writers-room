@@ -1,21 +1,22 @@
 # Roadmap: Writer's Room
+
 > Created: 2026-04-25 11:15
 > Last Updated: 2026-04-25 11:15
 
 ## Phase 개요
 
-| Phase | 이름 | 목표 | 예상 기간 |
-|:---:|:---|:---|:---|
-| 0 | 프로젝트 초기화 | 개발 환경, 기본 구조 세팅 | 1일 |
-| 1 | 인증 및 레이아웃 | Smart Wallet 연결, GNB, 라우팅 | 2일 |
-| 2 | 스토리 CRUD | 스토리 생성/조회/수정, 챕터 발행 | 3일 |
-| 3 | AI 작가방 핵심 | 멀티 에이전트 토론, FLock API 연동, 챕터 생성 | 4일 |
-| 4 | 댓글 및 아이디어 선별 | 댓글 시스템, AI 선별, 채택 표시 | 2일 |
-| 5 | 에이전트 마켓플레이스 | 에이전트 CRUD, 마켓 탐색, 고용 | 3일 |
-| 6 | x402 결제 | USDC 결제 연동, 트랜잭션 기록 | 3일 |
-| 7 | 온체인 기여/평판 | 기여 기록, 평판 시스템, 스마트 컨트랙트 | 3일 |
-| 8 | 대시보드 | 내 스토리/에이전트/수익 관리 | 2일 |
-| 9 | 통합 테스트 및 폴리싱 | E2E 테스트, UI 폴리싱, 반응형 | 3일 |
+| Phase | 이름                  | 목표                                          | 예상 기간 |
+| :---: | :-------------------- | :-------------------------------------------- | :-------- |
+|   0   | 프로젝트 초기화       | 개발 환경, 기본 구조 세팅                     | 1일       |
+|   1   | 인증 및 레이아웃      | Smart Wallet 연결, GNB, 라우팅                | 2일       |
+|   2   | 스토리 CRUD           | 스토리 생성/조회/수정, 챕터 발행              | 3일       |
+|   3   | AI 작가방 핵심        | 멀티 에이전트 토론, FLock API 연동, 챕터 생성 | 4일       |
+|   4   | 댓글 및 아이디어 선별 | 댓글 시스템, AI 선별, 채택 표시               | 2일       |
+|   5   | 에이전트 마켓플레이스 | 에이전트 CRUD, 마켓 탐색, 고용                | 3일       |
+|   6   | x402 결제             | USDC 결제 연동, 트랜잭션 기록                 | 3일       |
+|   7   | 온체인 기여/평판      | 기여 기록, 평판 시스템, 스마트 컨트랙트       | 3일       |
+|   8   | 대시보드              | 내 스토리/에이전트/수익 관리                  | 2일       |
+|   9   | 통합 테스트 및 폴리싱 | E2E 테스트, UI 폴리싱, 반응형                 | 3일       |
 
 총 예상: 약 26일 (4주)
 
@@ -25,16 +26,16 @@
 
 **목표**: 개발 환경과 기본 프로젝트 구조 완성
 
-- [ ] Next.js 15 프로젝트 생성 (App Router, TypeScript, Tailwind CSS)
-- [ ] shadcn/ui 설치 및 기본 컴포넌트 추가
-- [ ] Supabase 프로젝트 생성 및 연결
-- [ ] 환경변수 설정 (.env.local)
-- [ ] ESLint + Prettier + lint-staged + Husky 설정
-- [ ] path alias (`@/`) 설정
-- [ ] Feature 기반 폴더 구조 생성
-- [ ] Zod 환경변수 검증 설정
-- [ ] FLock API 연결 테스트 (단순 chat completion)
-- [ ] Git 초기 커밋
+- [x] Next.js 15 프로젝트 생성 (App Router, TypeScript, Tailwind CSS)
+- [x] shadcn/ui 설치 및 기본 컴포넌트 추가
+- [x] Supabase 프로젝트 생성 및 연결
+- [x] 환경변수 설정 (.env.local)
+- [x] ESLint + Prettier + lint-staged + Husky 설정
+- [x] path alias (`@/`) 설정
+- [x] Feature 기반 폴더 구조 생성
+- [x] Zod 환경변수 검증 설정
+- [x] FLock API 연결 테스트 (단순 chat completion)
+- [x] Git 초기 커밋
 
 **기술 명세 참조**: [Development Principles](../03_Technical_Specs/00_DEVELOPMENT_PRINCIPLES.md)
 
@@ -44,15 +45,15 @@
 
 **목표**: Smart Wallet 로그인, 전체 레이아웃, 라우팅 완성
 
-- [ ] wagmi + viem + OnchainKit 설치 및 설정
-- [ ] Coinbase Smart Wallet 연결 기능 구현
-- [ ] Supabase Auth와 월렛 주소 연동 (커스텀 인증)
-- [ ] users 테이블 마이그레이션 및 RLS 정책
-- [ ] GNB 컴포넌트 (로고, 메뉴, 알림, 지갑 버튼)
-- [ ] 모바일 하단 탭 바
-- [ ] 인증 미들웨어 (보호 라우트)
-- [ ] 랜딩 페이지 (Hero, CTA, 작동 방식 설명)
-- [ ] 반응형 레이아웃 (desktop/tablet/mobile)
+- [x] wagmi + viem + OnchainKit 설치 및 설정
+- [x] Coinbase Smart Wallet 연결 기능 구현
+- [x] Supabase Auth와 월렛 주소 연동 (커스텀 인증)
+- [x] users 테이블 마이그레이션 및 RLS 정책
+- [x] GNB 컴포넌트 (로고, 메뉴, 알림, 지갑 버튼)
+- [x] 모바일 하단 탭 바
+- [x] 인증 미들웨어 (보호 라우트)
+- [x] 랜딩 페이지 (Hero, CTA, 작동 방식 설명)
+- [x] 반응형 레이아웃 (desktop/tablet/mobile)
 
 **UI 참조**: [UI Design](../02_UI_Screens/01_UI_DESIGN.md) - GNB, 레이아웃 섹션
 
@@ -238,6 +239,7 @@
 ---
 
 ## Related Documents
+
 - **Concept_Design**: [Product Specs](../01_Concept_Design/03_PRODUCT_SPECS.md) - MVP 기능 명세
 - **Technical_Specs**: [Development Principles](../03_Technical_Specs/00_DEVELOPMENT_PRINCIPLES.md) - 기술 스택
 - **Technical_Specs**: [DB Schema](../03_Technical_Specs/01_DB_SCHEMA.md) - 마이그레이션 순서
