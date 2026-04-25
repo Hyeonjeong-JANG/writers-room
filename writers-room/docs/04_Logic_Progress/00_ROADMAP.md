@@ -63,20 +63,20 @@
 
 **목표**: 스토리 생성, 목록 조회, 상세 보기, 챕터 읽기/발행
 
-- [ ] stories 테이블 마이그레이션 및 RLS
-- [ ] chapters 테이블 마이그레이션 및 RLS
-- [ ] Zod 스키마: 스토리 생성/수정 요청
-- [ ] API: GET /api/stories (목록, 필터, 페이지네이션)
-- [ ] API: POST /api/stories (생성)
-- [ ] API: GET /api/stories/[id] (상세)
-- [ ] API: PATCH /api/stories/[id] (수정)
-- [ ] API: GET /api/stories/[id]/chapters (챕터 목록)
-- [ ] API: GET /api/stories/[id]/chapters/[n] (챕터 상세)
-- [ ] API: POST /api/stories/[id]/chapters (챕터 발행)
-- [ ] 스토리 탐색 페이지 (카드 그리드, 필터)
-- [ ] 스토리 생성 페이지 (폼: 제목, 장르, 시놉시스, 캐릭터)
-- [ ] 스토리 상세 페이지 (시놉시스, 챕터 목록, 에이전트)
-- [ ] 챕터 리더 페이지 (Noto Serif KR, 이전/다음 네비게이션)
+- [x] stories 테이블 마이그레이션 및 RLS
+- [x] chapters 테이블 마이그레이션 및 RLS
+- [x] Zod 스키마: 스토리 생성/수정 요청
+- [x] API: GET /api/stories (목록, 필터, 페이지네이션)
+- [x] API: POST /api/stories (생성)
+- [x] API: GET /api/stories/[id] (상세)
+- [x] API: PATCH /api/stories/[id] (수정)
+- [x] API: GET /api/stories/[id]/chapters (챕터 목록)
+- [x] API: GET /api/stories/[id]/chapters/[n] (챕터 상세)
+- [x] API: POST /api/stories/[id]/chapters (챕터 발행)
+- [x] 스토리 탐색 페이지 (카드 그리드, 필터)
+- [x] 스토리 생성 페이지 (폼: 제목, 장르, 시놉시스, 캐릭터)
+- [x] 스토리 상세 페이지 (시놉시스, 챕터 목록, 에이전트)
+- [x] 챕터 리더 페이지 (Noto Serif KR, 이전/다음 네비게이션)
 
 **DB 참조**: [DB Schema](../03_Technical_Specs/01_DB_SCHEMA.md) - stories, chapters
 **API 참조**: [API Specs](../03_Technical_Specs/02_API_SPECS.md) - Stories API
@@ -119,18 +119,18 @@
 
 **목표**: 댓글 시스템, AI 아이디어 선별, 채택 표시
 
-- [ ] comments 테이블 마이그레이션 및 RLS
-- [ ] Zod 스키마: 댓글 작성 요청
-- [ ] API: GET /api/comments (챕터별 댓글 목록)
-- [ ] API: POST /api/comments (댓글 작성)
-- [ ] API: POST /api/comments/analyze (AI 댓글 분석)
-- [ ] 댓글 섹션 UI (일반 댓글 / 아이디어 제안 탭)
-- [ ] 아이디어 태그 선택 (#전개제안, #캐릭터제안, #설정제안)
-- [ ] 좋아요 기능
-- [ ] AI 선별 로직 (FLock API로 댓글 분석)
-- [ ] "AI 선별됨" 배지 표시
-- [ ] "이 아이디어가 챕터 N에 반영되었습니다" 표시
-- [ ] 작가방 토론 시작 시 채택 댓글 자동 주입
+- [x] comments 테이블 마이그레이션 및 RLS
+- [x] Zod 스키마: 댓글 작성 요청
+- [x] API: GET /api/comments (챕터별 댓글 목록)
+- [x] API: POST /api/comments (댓글 작성)
+- [x] API: POST /api/comments/analyze (AI 댓글 분석)
+- [x] 댓글 섹션 UI (일반 댓글 / 아이디어 제안 탭)
+- [x] 아이디어 태그 선택 (#전개제안, #캐릭터제안, #설정제안)
+- [x] 좋아요 기능
+- [x] AI 선별 로직 (FLock API로 댓글 분석)
+- [x] "AI 선별됨" 배지 표시
+- [x] "이 아이디어가 챕터 N에 반영되었습니다" 표시
+- [x] 작가방 토론 시작 시 채택 댓글 자동 주입
 
 **DB 참조**: [DB Schema](../03_Technical_Specs/01_DB_SCHEMA.md) - comments
 

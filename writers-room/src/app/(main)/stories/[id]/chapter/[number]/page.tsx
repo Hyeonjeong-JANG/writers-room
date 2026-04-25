@@ -6,6 +6,8 @@ import { ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useChapter, useStory } from '@/features/story/hooks/use-stories'
+import { useAuth } from '@/hooks/use-auth'
+import { CommentSection } from '@/features/comment/components/comment-section'
 
 export default function ChapterReaderPage({
   params,
@@ -16,6 +18,9 @@ export default function ChapterReaderPage({
   const num = parseInt(chapterNum, 10)
   const { story } = useStory(id)
   const { chapter, isLoading } = useChapter(id, num)
+  const { user } = useAuth()
+
+  const isCreator = !!(user && story && user.id === story.creator_id)
 
   if (isLoading) {
     return (
@@ -100,6 +105,9 @@ export default function ChapterReaderPage({
           )}
         </div>
       </nav>
+
+      {/* Comments */}
+      <CommentSection chapterId={chapter.id} storyId={id} isCreator={isCreator} />
     </div>
   )
 }
