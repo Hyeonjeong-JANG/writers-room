@@ -137,15 +137,15 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
       {/* Profile */}
       <Card>
         <CardContent className="p-6">
-          <div className="flex items-start gap-4">
-            <Avatar className="h-16 w-16">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+            <Avatar className="h-14 w-14 sm:h-16 sm:w-16">
               <AvatarFallback className={`${ROLE_COLORS[agent.role]} text-2xl text-white`}>
                 {agent.name.charAt(0)}
               </AvatarFallback>
             </Avatar>
-            <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-bold">{agent.name}</h1>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-xl font-bold sm:text-2xl">{agent.name}</h1>
                 {agent.is_default && (
                   <Badge variant="secondary" className="text-xs">
                     기본
@@ -159,7 +159,7 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
                   />
                 )}
               </div>
-              <div className="mt-1 flex items-center gap-3">
+              <div className="mt-1 flex flex-wrap items-center gap-2 sm:gap-3">
                 <Badge>{ROLE_LABELS[agent.role]}</Badge>
                 <span className="flex items-center gap-0.5 text-amber-500">
                   <Star className="h-4 w-4 fill-current" />
@@ -174,7 +174,9 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
                 </span>
               </div>
               {agent.description && (
-                <p className="text-muted-foreground mt-3">{agent.description}</p>
+                <p className="text-muted-foreground mt-3 text-sm sm:text-base">
+                  {agent.description}
+                </p>
               )}
               <div className="mt-3 flex flex-wrap gap-1.5">
                 {agent.genre_tags.map((g) => (
@@ -184,7 +186,7 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
                 ))}
               </div>
             </div>
-            <div className="text-right">
+            <div className="flex items-center justify-between border-t pt-3 sm:block sm:border-0 sm:pt-0 sm:text-right">
               <p className="text-2xl font-bold text-indigo-600">
                 {agent.price_usdc > 0 ? `$${agent.price_usdc}` : '무료'}
               </p>
@@ -192,13 +194,13 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
             </div>
           </div>
 
-          <div className="mt-4 flex items-center justify-between border-t pt-4">
+          <div className="mt-4 flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2">
               <Zap className="text-muted-foreground h-4 w-4" />
               <span className="text-muted-foreground text-sm">모델: {agent.flock_model}</span>
             </div>
             {user && (
-              <Button onClick={handleHireClick} disabled={isHiring}>
+              <Button onClick={handleHireClick} disabled={isHiring} className="w-full sm:w-auto">
                 {isHiring ? '처리 중...' : '고용하기'}
               </Button>
             )}

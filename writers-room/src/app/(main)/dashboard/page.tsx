@@ -360,43 +360,88 @@ function MyStoriesSection({ userId }: { userId: string }) {
     <div className="space-y-3">
       {stories.map((story) => (
         <Card key={story.id}>
-          <CardContent className="flex items-center gap-4 p-4">
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <Link
-                  href={`/stories/${story.id}`}
-                  className="truncate text-sm font-semibold hover:underline"
-                >
-                  {story.title}
-                </Link>
-                <span
-                  className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${STATUS_COLORS[story.status] ?? ''}`}
-                >
-                  {STATUS_LABELS[story.status] ?? story.status}
-                </span>
+          <CardContent className="p-4">
+            <div className="flex items-start gap-4">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <Link
+                    href={`/stories/${story.id}`}
+                    className="truncate text-sm font-semibold hover:underline"
+                  >
+                    {story.title}
+                  </Link>
+                  <span
+                    className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${STATUS_COLORS[story.status] ?? ''}`}
+                  >
+                    {STATUS_LABELS[story.status] ?? story.status}
+                  </span>
+                </div>
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  {story.genre?.map((g: string) => (
+                    <Badge key={g} variant="secondary" className="text-[10px]">
+                      {g}
+                    </Badge>
+                  ))}
+                  <span className="text-muted-foreground flex items-center gap-0.5 text-xs">
+                    <Eye className="h-3 w-3" /> {story.view_count ?? 0}
+                  </span>
+                  <span className="text-muted-foreground text-xs">
+                    {formatDate(story.created_at)}
+                  </span>
+                </div>
               </div>
-              <div className="mt-1 flex flex-wrap items-center gap-2">
-                {story.genre?.map((g: string) => (
-                  <Badge key={g} variant="secondary" className="text-[10px]">
-                    {g}
-                  </Badge>
-                ))}
-                <span className="text-muted-foreground flex items-center gap-0.5 text-xs">
-                  <Eye className="h-3 w-3" /> {story.view_count ?? 0}
-                </span>
-                <span className="text-muted-foreground text-xs">
-                  {formatDate(story.created_at)}
-                </span>
+
+              {/* Desktop Actions */}
+              <div className="hidden shrink-0 items-center gap-1.5 sm:flex">
+                {story.status === 'ongoing' && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs"
+                    disabled={updatingId === story.id}
+                    onClick={() => handleStatusChange(story.id, 'hiatus')}
+                  >
+                    휴재
+                  </Button>
+                )}
+                {story.status === 'hiatus' && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs"
+                    disabled={updatingId === story.id}
+                    onClick={() => handleStatusChange(story.id, 'ongoing')}
+                  >
+                    연재 재개
+                  </Button>
+                )}
+                {story.status !== 'completed' && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs text-blue-600"
+                    disabled={updatingId === story.id}
+                    onClick={() => handleStatusChange(story.id, 'completed')}
+                  >
+                    완결
+                  </Button>
+                )}
+                <Link href={`/stories/${story.id}/room`}>
+                  <Button variant="outline" size="sm" className="h-7 text-xs">
+                    <PenTool className="mr-1 h-3 w-3" />
+                    작가방
+                  </Button>
+                </Link>
               </div>
             </div>
 
-            {/* Actions */}
-            <div className="flex shrink-0 items-center gap-1.5">
+            {/* Mobile Actions */}
+            <div className="mt-3 flex items-center gap-1.5 border-t pt-3 sm:hidden">
               {story.status === 'ongoing' && (
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-7 text-xs"
+                  className="h-8 flex-1 text-xs"
                   disabled={updatingId === story.id}
                   onClick={() => handleStatusChange(story.id, 'hiatus')}
                 >
@@ -407,7 +452,7 @@ function MyStoriesSection({ userId }: { userId: string }) {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-7 text-xs"
+                  className="h-8 flex-1 text-xs"
                   disabled={updatingId === story.id}
                   onClick={() => handleStatusChange(story.id, 'ongoing')}
                 >
@@ -418,15 +463,15 @@ function MyStoriesSection({ userId }: { userId: string }) {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-7 text-xs text-blue-600"
+                  className="h-8 flex-1 text-xs text-blue-600"
                   disabled={updatingId === story.id}
                   onClick={() => handleStatusChange(story.id, 'completed')}
                 >
                   완결
                 </Button>
               )}
-              <Link href={`/stories/${story.id}/room`}>
-                <Button variant="outline" size="sm" className="h-7 text-xs">
+              <Link href={`/stories/${story.id}/room`} className="flex-1">
+                <Button variant="outline" size="sm" className="h-8 w-full text-xs">
                   <PenTool className="mr-1 h-3 w-3" />
                   작가방
                 </Button>
@@ -581,7 +626,7 @@ function EarningsSection({ userId }: { userId: string }) {
     <div className="space-y-6">
       {/* Earnings Summary */}
       {stats && (
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <Card>
             <CardContent className="p-4 text-center">
               <p className="text-muted-foreground text-xs">총 수익</p>

@@ -17,7 +17,7 @@ export function MobileTabBar() {
   const pathname = usePathname()
 
   return (
-    <nav className="border-border bg-background fixed right-0 bottom-0 left-0 z-50 border-t lg:hidden">
+    <nav className="border-border bg-background fixed right-0 bottom-0 left-0 z-50 border-t pb-[env(safe-area-inset-bottom)] lg:hidden">
       <ul className="flex h-16 items-center justify-around">
         {tabs.map((tab) => {
           const isActive = tab.href === '/' ? pathname === '/' : pathname?.startsWith(tab.href)
