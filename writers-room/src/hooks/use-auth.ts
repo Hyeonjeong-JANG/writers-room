@@ -58,7 +58,7 @@ export function useAuth() {
   }, [address, supabase.auth])
 
   // 지갑 연결 상태 변화 감지 — 이전 주소를 추적하여 변경 시에만 인증
-  const prevAddressRef = useRef<string | undefined>()
+  const prevAddressRef = useRef<string | undefined>(undefined)
   useEffect(() => {
     if (isConnected && address && address !== prevAddressRef.current && !user) {
       prevAddressRef.current = address
