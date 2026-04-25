@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { AnalyzeCommentsSchema } from '@/features/comment/lib/schemas'
 import { createFlockClient, getDefaultModel } from '@/lib/flock/client'
+import { recordContribution } from '@/features/onchain/lib/contribution-service'
 
 // POST /api/comments/analyze - AI 댓글 분석 (스토리 creator만)
 export async function POST(request: NextRequest) {
@@ -151,6 +152,36 @@ export async function POST(request: NextRequest) {
     if (adoptedComments.length > 0) {
       const adoptedIds = adoptedComments.map((c) => c.commentId)
       await supabase.from('comments').update({ is_adopted: true }).in('id', adoptedIds)
+
+      // 채택된 댓글 작성자별 기여 기록
+      const { data: adoptedCommentRows } = await supabase
+        .from('comments')
+        .select('id, user_id, chapter_id')
+        .in('id', adoptedIds)
+
+      if (adoptedCommentRows) {
+        // 챕터 번호 조회
+        const chapterIds = [...new Set(adoptedCommentRows.map((c) => c.chapter_id))]
+        const { data: chapters } = await supabase
+          .from('chapters')
+          .select('id, chapter_number')
+          .in('id', chapterIds)
+
+        const chapterMap = new Map(chapters?.map((ch) => [ch.id, ch.chapter_number]) ?? [])
+
+        for (const comment of adoptedCommentRows) {
+          recordContribution({
+            userId: comment.user_id,
+            storyId: storyId,
+            contributionType: 'comment_adopted',
+            context: {
+              comment_id: comment.id,
+              chapter_id: comment.chapter_id,
+              chapter_number: chapterMap.get(comment.chapter_id) ?? null,
+            },
+          })
+        }
+      }
     }
 
     return NextResponse.json({

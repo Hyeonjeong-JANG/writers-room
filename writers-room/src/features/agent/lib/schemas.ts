@@ -86,6 +86,10 @@ export interface AgentRow {
     avatar_url: string | null
     wallet_address: string
   }
+  trust_score?: {
+    overall_score: number
+    trust_tier: string
+  } | null
 }
 
 export interface AgentReviewRow {

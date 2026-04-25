@@ -6,6 +6,8 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { ROLE_LABELS, ROLE_COLORS, type AgentRow } from '@/features/agent/lib/schemas'
+import { TrustBadge } from '@/features/onchain/components/trust-badge'
+import type { TrustTier } from '@/features/onchain/lib/schemas'
 
 interface AgentProfileCardProps {
   agent: AgentRow
@@ -34,6 +36,12 @@ export function AgentProfileCard({ agent }: AgentProfileCardProps) {
                   <Star className="h-3.5 w-3.5 fill-current" />
                   {agent.avg_rating.toFixed(1)}
                 </span>
+                {agent.trust_score && agent.trust_score.trust_tier !== 'none' && (
+                  <TrustBadge
+                    tier={agent.trust_score.trust_tier as TrustTier}
+                    score={agent.trust_score.overall_score}
+                  />
+                )}
               </div>
             </div>
           </div>

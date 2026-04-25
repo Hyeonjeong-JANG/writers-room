@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { CreateChapterSchema } from '@/features/story/lib/schemas'
+import { recordContribution } from '@/features/onchain/lib/contribution-service'
 
 // GET /api/stories/[id]/chapters - 챕터 목록 (published만 공개)
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -116,6 +117,17 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         { status: 500 },
       )
     }
+
+    // 챕터 발행 기여 기록
+    recordContribution({
+      userId: user.id,
+      storyId,
+      contributionType: 'chapter_generated',
+      context: {
+        chapter_id: data.id,
+        chapter_number: nextNumber,
+      },
+    })
 
     return NextResponse.json({ data }, { status: 201 })
   } catch {

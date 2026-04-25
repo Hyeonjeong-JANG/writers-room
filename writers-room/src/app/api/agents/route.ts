@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { AgentsQuerySchema, CreateAgentSchema } from '@/features/agent/lib/schemas'
+import { recordContribution } from '@/features/onchain/lib/contribution-service'
 
 // GET /api/agents - 에이전트 마켓 목록 (공개)
 export async function GET(request: NextRequest) {
@@ -27,9 +28,10 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from('agents')
-      .select('*, creator:users!creator_id(id, display_name, avatar_url, wallet_address)', {
-        count: 'exact',
-      })
+      .select(
+        '*, creator:users!creator_id(id, display_name, avatar_url, wallet_address), trust_score:agent_trust_scores(overall_score, trust_tier)',
+        { count: 'exact' },
+      )
       .eq('is_active', true)
 
     if (role) query = query.eq('role', role)
@@ -128,6 +130,17 @@ export async function POST(request: NextRequest) {
         { status: 500 },
       )
     }
+
+    // 에이전트 생성 기여 기록
+    recordContribution({
+      userId: user.id,
+      contributionType: 'agent_created',
+      context: {
+        agent_id: data.id,
+        agent_name: data.name,
+        agent_role: data.role,
+      },
+    })
 
     return NextResponse.json({ data }, { status: 201 })
   } catch {

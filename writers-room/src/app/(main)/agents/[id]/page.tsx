@@ -21,6 +21,10 @@ import { useAuth } from '@/hooks/use-auth'
 import { useAgent, useHireAgent, useReviewAgent } from '@/features/agent/hooks/use-agents'
 import { ROLE_LABELS, ROLE_COLORS } from '@/features/agent/lib/schemas'
 import { PaymentModal } from '@/features/payment/components/payment-modal'
+import { TrustBadge } from '@/features/onchain/components/trust-badge'
+import { TrustScoreDetail } from '@/features/onchain/components/trust-score-detail'
+import { useTrustScore } from '@/features/onchain/hooks/use-trust-score'
+import type { TrustTier } from '@/features/onchain/lib/schemas'
 import useSWR from 'swr'
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json())
@@ -31,6 +35,9 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
   const { agent, isLoading, mutate } = useAgent(id)
   const { submitReview, isSubmitting: isReviewing } = useReviewAgent()
   const { hireAgent, isHiring } = useHireAgent()
+
+  const { trustScore, isLoading: isTrustLoading, mutate: mutateTrust } = useTrustScore(id)
+  const [isRecalculating, setIsRecalculating] = useState(false)
 
   const [rating, setRating] = useState(5)
   const [reviewText, setReviewText] = useState('')
@@ -98,6 +105,16 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
     mutate()
   }
 
+  const handleRecalculate = async () => {
+    setIsRecalculating(true)
+    try {
+      await fetch(`/api/nansen/recalculate/${id}`, { method: 'POST' })
+      mutateTrust()
+    } finally {
+      setIsRecalculating(false)
+    }
+  }
+
   const handleReview = async () => {
     const result = await submitReview(id, rating, reviewText || undefined)
     if (result) {
@@ -133,6 +150,13 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
                   <Badge variant="secondary" className="text-xs">
                     기본
                   </Badge>
+                )}
+                {trustScore && trustScore.trust_tier !== 'none' && (
+                  <TrustBadge
+                    tier={trustScore.trust_tier as TrustTier}
+                    score={trustScore.overall_score}
+                    size="md"
+                  />
                 )}
               </div>
               <div className="mt-1 flex items-center gap-3">
@@ -245,6 +269,14 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
           )}
         </CardContent>
       </Card>
+
+      {/* Trust Score Detail */}
+      <TrustScoreDetail
+        trustScore={trustScore}
+        isLoading={isTrustLoading}
+        onRecalculate={user ? handleRecalculate : undefined}
+        isRecalculating={isRecalculating}
+      />
 
       {/* 스토리 선택 다이얼로그 */}
       <Dialog open={showStorySelect} onOpenChange={setShowStorySelect}>
