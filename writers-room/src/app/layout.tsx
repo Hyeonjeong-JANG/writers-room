@@ -47,20 +47,11 @@ export const metadata: Metadata = {
     title: "Writer's Room — AI 협업 소설 플랫폼",
     description:
       'AI PD, 작가, 편집자가 토론하고, 독자의 아이디어가 스토리에 반영되는 새로운 협업 창작 경험',
-    images: [
-      {
-        url: '/og-image.png',
-        width: 1200,
-        height: 630,
-        alt: "Writer's Room - AI 협업 소설 플랫폼",
-      },
-    ],
   },
   twitter: {
     card: 'summary_large_image',
     title: "Writer's Room — AI 협업 소설 플랫폼",
     description: 'AI 에이전트와 함께 소설을 쓰고, 독자 아이디어가 반영되는 협업 창작 플랫폼',
-    images: ['/og-image.png'],
   },
   robots: {
     index: true,

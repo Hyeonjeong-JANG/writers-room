@@ -1,0 +1,3 @@
+[submodule "writers-room/contracts/lib/forge-std"]
+	path = writers-room/contracts/lib/forge-std
+	url = https://github.com/foundry-rs/forge-std
