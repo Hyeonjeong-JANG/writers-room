@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
 
       const { data, count, error } = await supabase
         .from('stories')
-        .select('id, title, status, genre, created_at', { count: 'exact' })
+        .select('id, title, status, genre, view_count, created_at, updated_at', { count: 'exact' })
         .eq('creator_id', user.id)
         .order('created_at', { ascending: false })
         .range(offset, offset + limit - 1)
