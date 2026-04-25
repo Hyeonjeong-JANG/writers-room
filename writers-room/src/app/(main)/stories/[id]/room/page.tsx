@@ -1,8 +1,8 @@
 'use client'
 
-import { use, useState, useCallback } from 'react'
+import { use, useState, useCallback, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { ArrowLeft, MessageSquare, PanelLeftClose, PanelLeftOpen, Wand2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -23,6 +23,7 @@ import type {
 export default function RoomPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: storyId } = use(params)
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { user } = useAuth()
   const { story, isLoading: storyLoading } = useStory(storyId)
   const { storyAgents, isLoading: agentsLoading } = useStoryAgents(storyId)
@@ -42,8 +43,49 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [isPublishing, setIsPublishing] = useState(false)
   const [activeAgentId, setActiveAgentId] = useState<string | undefined>()
+  const [autoStartStatus, setAutoStartStatus] = useState<string | null>(null)
+  const autoStartTriggered = useRef(false)
 
   const isCreator = user && story && user.id === story.creator_id
+
+  // autostart=true 파라미터로 진입 시 자동 토론 + 챕터 생성
+  useEffect(() => {
+    if (autoStartTriggered.current) return
+    if (searchParams.get('autostart') !== 'true') return
+    if (!isCreator || agentsLoading || storyLoading) return
+
+    autoStartTriggered.current = true
+
+    // URL에서 autostart 제거 (재방문 시 재트리거 방지)
+    router.replace(`/stories/${storyId}/room`, { scroll: false })
+
+    const run = async () => {
+      setAutoStartStatus('AI 에이전트들이 토론 중...')
+      const result = await startDiscussion(storyId)
+      if (result) {
+        setDiscussionResult(result)
+        setDiscussionLog(result.log)
+
+        setAutoStartStatus('첫 챕터 생성 중...')
+        const chapter = await generateChapter(result.discussionId)
+        if (chapter) {
+          setGeneratedChapter(chapter)
+        }
+      }
+      setAutoStartStatus(null)
+    }
+
+    run()
+  }, [
+    searchParams,
+    isCreator,
+    agentsLoading,
+    storyLoading,
+    storyId,
+    router,
+    startDiscussion,
+    generateChapter,
+  ])
 
   const handleStartDiscussion = useCallback(async () => {
     const result = await startDiscussion(storyId)
@@ -209,6 +251,14 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
                 onPublish={handlePublish}
                 isPublishing={isPublishing}
               />
+            </div>
+          )}
+
+          {/* 자동 시작 상태 표시 */}
+          {autoStartStatus && (
+            <div className="mt-3 flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-300">
+              <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+              {autoStartStatus}
             </div>
           )}
 

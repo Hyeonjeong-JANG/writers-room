@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { GenerateChapterSchema } from '@/features/room/lib/schemas'
 import { generateChapter } from '@/features/room/lib/orchestrator'
 
+export const maxDuration = 60
+
 // POST /api/room/generate - 챕터 초안 생성 (스토리 creator만)
 export async function POST(request: NextRequest) {
   try {

@@ -100,7 +100,7 @@ export default function CreateStoryPage() {
       }
 
       toast.success('스토리가 생성되었습니다!')
-      router.push(`/stories/${json.data.id}`)
+      router.push(`/stories/${json.data.id}/room?autostart=true`)
     } catch {
       toast.error('네트워크 오류가 발생했습니다')
     } finally {

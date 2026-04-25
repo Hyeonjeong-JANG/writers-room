@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { StartDiscussionSchema } from '@/features/room/lib/schemas'
 import { runDiscussion } from '@/features/room/lib/orchestrator'
 
+export const maxDuration = 60
+
 // POST /api/room/discuss - 토론 시작 (스토리 creator만)
 export async function POST(request: NextRequest) {
   try {
