@@ -140,20 +140,20 @@
 
 **목표**: 에이전트 생성/탐색/고용 전체 플로우
 
-- [ ] Zod 스키마: 에이전트 생성/수정 요청
-- [ ] API: GET /api/agents (마켓 목록, 필터)
-- [ ] API: POST /api/agents (생성)
-- [ ] API: GET /api/agents/[id] (상세)
-- [ ] API: PATCH /api/agents/[id] (수정)
-- [ ] API: POST /api/agents/[id]/hire (고용)
-- [ ] agent_reviews 테이블 마이그레이션
-- [ ] API: POST /api/agents/[id]/review (리뷰 작성)
-- [ ] 마켓플레이스 페이지 (필터, 카드 그리드)
-- [ ] 에이전트 상세 페이지 (프로필, 평점, 리뷰, 이력)
-- [ ] 에이전트 생성 페이지 (역할, 장르, 프롬프트, 가격)
-- [ ] 에이전트 프로필 카드 컴포넌트
-- [ ] FLock 모델 목록 API 연동 (사용 가능 모델 선택)
-- [ ] 평균 평점 자동 갱신 (리뷰 작성 시 트리거)
+- [x] Zod 스키마: 에이전트 생성/수정 요청
+- [x] API: GET /api/agents (마켓 목록, 필터)
+- [x] API: POST /api/agents (생성)
+- [x] API: GET /api/agents/[id] (상세)
+- [x] API: PATCH /api/agents/[id] (수정)
+- [x] API: POST /api/agents/[id]/hire (고용)
+- [x] agent_reviews 테이블 마이그레이션
+- [x] API: POST /api/agents/[id]/review (리뷰 작성)
+- [x] 마켓플레이스 페이지 (필터, 카드 그리드)
+- [x] 에이전트 상세 페이지 (프로필, 평점, 리뷰, 이력)
+- [x] 에이전트 생성 페이지 (역할, 장르, 프롬프트, 가격)
+- [x] 에이전트 프로필 카드 컴포넌트
+- [x] FLock 모델 목록 API 연동 (사용 가능 모델 선택)
+- [x] 평균 평점 자동 갱신 (리뷰 작성 시 트리거)
 
 ---
 
