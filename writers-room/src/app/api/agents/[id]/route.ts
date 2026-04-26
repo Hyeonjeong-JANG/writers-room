@@ -94,7 +94,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     if (d.systemPrompt !== undefined) updates.system_prompt = d.systemPrompt
     if (d.fewShotExamples !== undefined) updates.few_shot_examples = d.fewShotExamples
     if (d.priceUsdc !== undefined) updates.price_usdc = d.priceUsdc
-    if (d.flockModel !== undefined) updates.flock_model = d.flockModel
+    if (d.model !== undefined) updates.model = d.model
     if (d.description !== undefined) updates.description = d.description
     if (d.isActive !== undefined) updates.is_active = d.isActive
 

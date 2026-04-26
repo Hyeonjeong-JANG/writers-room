@@ -1,4 +1,4 @@
-import { createFlockClient, getDefaultModel } from '@/lib/flock/client'
+import { createAIClient, getDefaultModel } from '@/lib/ai/client'
 import { fetchTrendKeywords } from '@/lib/selanet/client'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { AgentRow, DiscussionLogEntry, DiscussionResult, GeneratedChapter } from './schemas'
@@ -92,8 +92,8 @@ async function callAgent(
   systemPrompt: string,
   userPrompt: string,
 ): Promise<string> {
-  const client = createFlockClient()
-  const model = agent.flock_model || getDefaultModel()
+  const client = createAIClient()
+  const model = agent.model || getDefaultModel()
 
   try {
     const response = await client.chat.completions.create({
@@ -324,8 +324,8 @@ export async function generateChapter(
 
   // 4. 챕터 생성
   const prompt = buildChapterGenerationPrompt(context, discussion.summary)
-  const client = createFlockClient()
-  const model = writer.flock_model || getDefaultModel()
+  const client = createAIClient()
+  const model = writer.model || getDefaultModel()
 
   const response = await client.chat.completions.create({
     model,
@@ -391,10 +391,10 @@ export async function autoGenerateNextChapter(
 
   // 3. 댓글이 있으면 AI 분석으로 선별
   if (comments && comments.length > 0) {
-    const flock = createFlockClient()
+    const ai = createAIClient()
     const commentsText = comments.map((c, i) => `[${i + 1}] ${c.content}`).join('\n')
 
-    const response = await flock.chat.completions.create({
+    const response = await ai.chat.completions.create({
       model: getDefaultModel(),
       messages: [
         {

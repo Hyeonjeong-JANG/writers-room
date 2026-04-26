@@ -16,7 +16,7 @@ export function SmartMoneyBadge({ labels = [] }: SmartMoneyBadgeProps) {
           Smart Money
         </TooltipTrigger>
         <TooltipContent>
-          <p>Nansen Smart Money 인증 지갑</p>
+          <p>Smart Money 인증 지갑</p>
           {labels.length > 0 && (
             <p className="text-muted-foreground text-xs">{labels.join(', ')}</p>
           )}

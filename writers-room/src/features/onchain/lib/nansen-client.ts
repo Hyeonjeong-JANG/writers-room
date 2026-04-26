@@ -1,39 +1,21 @@
+import { createPublicClient, http, formatEther } from 'viem'
+import { base } from 'viem/chains'
 import { createClient } from '@/lib/supabase/server'
 import type { NansenWalletData } from './schemas'
 
-const NANSEN_API_BASE = 'https://api.nansen.ai/v1'
-
-function isNansenEnabled(): boolean {
-  return !!process.env.NANSEN_X402_WALLET_KEY
-}
-
-/**
- * Generate deterministic mock data for a wallet address (for dev/demo without API key).
- */
-function generateMockData(address: string): Omit<NansenWalletData, 'fetched_at' | 'expires_at'> {
-  // Use address chars to generate deterministic values
-  const seed = parseInt(address.slice(2, 10), 16)
-  const isSmartMoney = seed % 3 === 0
-  const score = ((seed % 80) + 20) / 100 // 0.20 ~ 0.99
-
-  const labelPool = ['DeFi Whale', 'NFT Collector', 'Early Adopter', 'DAO Voter', 'LP Provider']
-  const labelCount = (seed % 3) + 1
-  const labels = labelPool.slice(0, labelCount)
-
-  return {
-    wallet_address: address.toLowerCase(),
-    labels,
-    is_smart_money: isSmartMoney,
-    portfolio_quality_score: Math.round(score * 100),
-    raw_response: { mock: true, seed },
-  }
-}
+const publicClient = createPublicClient({
+  chain: base,
+  transport: http(),
+})
 
 /**
- * Get wallet analysis: cache check -> API call or mock -> cache upsert.
+ * Get wallet analysis using on-chain data (replaces Nansen API).
+ * Queries transaction count and balance from Base chain via viem,
+ * then computes labels and scores locally.
+ * Results are cached in nansen_wallet_cache with 24h TTL.
  */
 export async function getWalletAnalysis(address: string): Promise<NansenWalletData> {
-  const normalizedAddress = address.toLowerCase()
+  const normalizedAddress = address.toLowerCase() as `0x${string}`
   const supabase = await createClient()
 
   // 1. Check cache (not expired)
@@ -48,37 +30,53 @@ export async function getWalletAnalysis(address: string): Promise<NansenWalletDa
     return cached as NansenWalletData
   }
 
-  // 2. Fetch from API or generate mock
+  // 2. Fetch on-chain data via viem
   let walletData: Omit<NansenWalletData, 'fetched_at' | 'expires_at'>
 
-  if (isNansenEnabled()) {
-    try {
-      const res = await fetch(`${NANSEN_API_BASE}/wallet/${normalizedAddress}`, {
-        headers: {
-          Authorization: `Bearer ${process.env.NANSEN_X402_WALLET_KEY}`,
-          'Content-Type': 'application/json',
-        },
-      })
+  try {
+    const [txCount, balance] = await Promise.all([
+      publicClient.getTransactionCount({ address: normalizedAddress }),
+      publicClient.getBalance({ address: normalizedAddress }),
+    ])
 
-      if (!res.ok) {
-        console.error('[nansen-client] API error:', res.status)
-        walletData = generateMockData(normalizedAddress)
-      } else {
-        const json = await res.json()
-        walletData = {
-          wallet_address: normalizedAddress,
-          labels: json.labels ?? [],
-          is_smart_money: json.is_smart_money ?? false,
-          portfolio_quality_score: json.portfolio_quality_score ?? 0,
-          raw_response: json,
-        }
-      }
-    } catch (err) {
-      console.error('[nansen-client] fetch error:', err)
-      walletData = generateMockData(normalizedAddress)
+    const balanceETH = parseFloat(formatEther(balance))
+
+    // Compute labels
+    const labels: string[] = []
+    if (txCount >= 100) labels.push('Active Trader')
+    else if (txCount >= 50) labels.push('Regular User')
+    else if (txCount >= 10) labels.push('Casual User')
+
+    if (balanceETH >= 1) labels.push('High Value')
+    else if (balanceETH >= 0.1) labels.push('Mid Value')
+
+    if (txCount >= 200) labels.push('Power User')
+
+    // Smart money heuristic
+    const isSmartMoney = txCount > 50 && balanceETH > 0.5
+
+    // Portfolio quality score (0-100)
+    const txScore = Math.min(txCount / 200, 1) * 60
+    const balanceScore = Math.min(balanceETH / 5, 1) * 40
+    const portfolioQualityScore = Math.round(txScore + balanceScore)
+
+    walletData = {
+      wallet_address: normalizedAddress,
+      labels,
+      is_smart_money: isSmartMoney,
+      portfolio_quality_score: portfolioQualityScore,
+      raw_response: { txCount, balanceETH, source: 'viem-base-chain' },
     }
-  } else {
-    walletData = generateMockData(normalizedAddress)
+  } catch (err) {
+    console.error('[wallet-analysis] on-chain fetch error:', err)
+    // Fallback: empty analysis
+    walletData = {
+      wallet_address: normalizedAddress,
+      labels: [],
+      is_smart_money: false,
+      portfolio_quality_score: 0,
+      raw_response: { error: 'fetch_failed', source: 'viem-base-chain' },
+    }
   }
 
   // 3. Cache upsert (24h TTL)

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { AnalyzeCommentsSchema } from '@/features/comment/lib/schemas'
-import { createFlockClient, getDefaultModel } from '@/lib/flock/client'
+import { createAIClient, getDefaultModel } from '@/lib/ai/client'
 import { recordContribution } from '@/features/onchain/lib/contribution-service'
 
 // POST /api/comments/analyze - AI 댓글 분석 (스토리 creator만)
@@ -79,11 +79,11 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // FLock API로 댓글 분석
-    const flock = createFlockClient()
+    // AI 댓글 분석
+    const ai = createAIClient()
     const commentsText = comments.map((c, i) => `[${i + 1}] ${c.content}`).join('\n')
 
-    const response = await flock.chat.completions.create({
+    const response = await ai.chat.completions.create({
       model: getDefaultModel(),
       messages: [
         {

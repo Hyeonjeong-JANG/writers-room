@@ -46,7 +46,7 @@ export interface AgentRow {
   is_active: boolean
   hire_count: number
   avg_rating: number
-  flock_model: string
+  model: string
   created_at: string
   updated_at: string
 }

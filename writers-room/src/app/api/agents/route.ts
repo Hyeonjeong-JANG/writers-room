@@ -127,16 +127,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const {
-      name,
-      role,
-      genreTags,
-      systemPrompt,
-      fewShotExamples,
-      priceUsdc,
-      flockModel,
-      description,
-    } = parsed.data
+    const { name, role, genreTags, systemPrompt, fewShotExamples, priceUsdc, model, description } =
+      parsed.data
 
     const { data, error } = await supabase
       .from('agents')
@@ -148,7 +140,7 @@ export async function POST(request: NextRequest) {
         system_prompt: systemPrompt,
         few_shot_examples: fewShotExamples ?? null,
         price_usdc: priceUsdc,
-        flock_model: flockModel,
+        model,
         description: description ?? null,
       })
       .select('*')

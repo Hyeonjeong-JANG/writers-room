@@ -13,11 +13,10 @@ import { useAuth } from '@/hooks/use-auth'
 import { useCreateAgent } from '@/features/agent/hooks/use-agents'
 import { ROLE_LABELS, GENRE_OPTIONS, type AgentRole } from '@/features/agent/lib/schemas'
 
-const FLOCK_MODELS = [
-  { id: 'Qwen/Qwen3-30B-A3B-fast', name: 'Qwen3-30B-A3B (Fast)' },
-  { id: 'Qwen/Qwen3-235B-A22B', name: 'Qwen3-235B-A22B' },
-  { id: 'meta-llama/Llama-4-Scout-17B-16E-Instruct', name: 'Llama 4 Scout 17B' },
-  { id: 'deepseek-ai/DeepSeek-V3-0324', name: 'DeepSeek V3' },
+const AI_MODELS = [
+  { id: 'gpt-4o-mini', name: 'GPT-4o Mini' },
+  { id: 'gpt-4o', name: 'GPT-4o' },
+  { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo' },
 ]
 
 export default function CreateAgentPage() {
@@ -31,7 +30,7 @@ export default function CreateAgentPage() {
   const [systemPrompt, setSystemPrompt] = useState('')
   const [description, setDescription] = useState('')
   const [priceUsdc, setPriceUsdc] = useState('0')
-  const [flockModel, setFlockModel] = useState(FLOCK_MODELS[0].id)
+  const [model, setModel] = useState(AI_MODELS[0].id)
 
   const toggleGenre = (genre: string) => {
     setSelectedGenres((prev) =>
@@ -51,7 +50,7 @@ export default function CreateAgentPage() {
       systemPrompt,
       description: description || undefined,
       priceUsdc: parseFloat(priceUsdc),
-      flockModel,
+      model,
     })
     if (result) {
       router.push(`/agents/${result.id}`)
@@ -157,13 +156,13 @@ export default function CreateAgentPage() {
           </div>
 
           <div>
-            <label className="mb-1.5 block text-sm font-medium">FLock 모델 *</label>
+            <label className="mb-1.5 block text-sm font-medium">AI 모델 *</label>
             <select
-              value={flockModel}
-              onChange={(e) => setFlockModel(e.target.value)}
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
               className="border-input bg-background w-full rounded-md border px-3 py-2 text-sm"
             >
-              {FLOCK_MODELS.map((m) => (
+              {AI_MODELS.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.name}
                 </option>

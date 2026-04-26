@@ -6,18 +6,9 @@ const envSchema = z.object({
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
 
-  // FLock API
-  FLOCK_API_KEY: z.string().min(1),
-  FLOCK_API_BASE_URL: z.string().url().default('https://api.flock.io/v1'),
-  FLOCK_DEFAULT_MODEL: z.string().min(1),
-
-  // Selanet
-  SELANET_API_KEY: z.string().optional(),
-  SELANET_API_BASE_URL: z.string().url().optional(),
-
-  // Nansen
-  NANSEN_API_BASE_URL: z.string().url().default('https://api.nansen.ai'),
-  NANSEN_X402_WALLET_KEY: z.string().optional(),
+  // OpenAI
+  OPENAI_API_KEY: z.string().min(1),
+  OPENAI_DEFAULT_MODEL: z.string().default('gpt-4o-mini'),
 
   // Base
   NEXT_PUBLIC_BASE_CHAIN_ID: z.string().default('8453'),

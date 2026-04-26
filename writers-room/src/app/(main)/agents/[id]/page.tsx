@@ -197,7 +197,7 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
           <div className="mt-4 flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2">
               <Zap className="text-muted-foreground h-4 w-4" />
-              <span className="text-muted-foreground text-sm">모델: {agent.flock_model}</span>
+              <span className="text-muted-foreground text-sm">모델: {agent.model}</span>
             </div>
             {user && (
               <Button onClick={handleHireClick} disabled={isHiring} className="w-full sm:w-auto">

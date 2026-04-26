@@ -16,7 +16,7 @@ export const CreateAgentSchema = z.object({
     .max(5000, '시스템 프롬프트는 5000자 이내'),
   fewShotExamples: z.array(z.record(z.string(), z.unknown())).optional(),
   priceUsdc: z.coerce.number().min(0, '가격은 0 이상').max(100, '가격은 100 USDC 이하'),
-  flockModel: z.string().min(1, '모델을 선택하세요'),
+  model: z.string().min(1, '모델을 선택하세요'),
   description: z.string().max(500, '소개는 500자 이내').optional(),
 })
 
@@ -26,7 +26,7 @@ export const UpdateAgentSchema = z.object({
   systemPrompt: z.string().min(10).max(5000).optional(),
   fewShotExamples: z.array(z.record(z.string(), z.unknown())).optional(),
   priceUsdc: z.coerce.number().min(0).max(100).optional(),
-  flockModel: z.string().min(1).optional(),
+  model: z.string().min(1).optional(),
   description: z.string().max(500).optional(),
   isActive: z.boolean().optional(),
 })
@@ -78,7 +78,7 @@ export interface AgentRow {
   is_active: boolean
   hire_count: number
   avg_rating: number
-  flock_model: string
+  model: string
   created_at: string
   updated_at: string
   creator?: {

@@ -32,7 +32,7 @@ export function TrustBadge({ tier, score, size = 'sm' }: TrustBadgeProps) {
         </TooltipTrigger>
         <TooltipContent>
           <p>Trust Score: {score?.toFixed(1) ?? '-'} / 100</p>
-          <p className="text-muted-foreground text-xs">Nansen 기반 에이전트 신뢰도</p>
+          <p className="text-muted-foreground text-xs">온체인 활동 기반 에이전트 신뢰도</p>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
