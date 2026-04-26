@@ -55,7 +55,7 @@ src/
 │   └── story/               # 스토리/챕터 훅/스키마
 ├── lib/
 │   ├── ai/                  # OpenAI 클라이언트
-│   ├── selanet/             # AI 트렌드 클라이언트
+│   ├── trends/              # AI 트렌드 클라이언트
 │   ├── supabase/            # Supabase 클라이언트 (client/server/service)
 │   └── wagmi/               # 지갑 연결 설정
 └── components/              # 공통 UI 컴포넌트

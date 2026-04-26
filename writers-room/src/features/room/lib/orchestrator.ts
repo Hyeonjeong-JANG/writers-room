@@ -1,5 +1,5 @@
 import { createAIClient, getDefaultModel } from '@/lib/ai/client'
-import { fetchTrendKeywords } from '@/lib/selanet/client'
+import { fetchTrendKeywords } from '@/lib/trends/client'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { AgentRow, DiscussionLogEntry, DiscussionResult, GeneratedChapter } from './schemas'
 import type { ContributionType } from '@/features/onchain/lib/schemas'

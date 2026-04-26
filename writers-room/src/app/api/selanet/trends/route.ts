@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { fetchTrendKeywords, type SelanetTrendResponse } from '@/lib/selanet/client'
+import { fetchTrendKeywords, type TrendResponse } from '@/lib/trends/client'
 
 const CACHE_TTL_MS = 60 * 60 * 1000 // 1시간
 
@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
   }
 
   // 2. AI 트렌드 생성
-  const trends: SelanetTrendResponse = await fetchTrendKeywords(genre)
+  const trends: TrendResponse = await fetchTrendKeywords(genre)
 
   // 3. 캐시 저장 (키워드가 있을 때만)
   if (trends.keywords.length > 0) {

@@ -6,7 +6,7 @@ export interface TrendKeyword {
   source: string
 }
 
-export interface SelanetTrendResponse {
+export interface TrendResponse {
   keywords: TrendKeyword[]
   popularPatterns: string[]
   sourcePlatforms: string[]
@@ -18,7 +18,7 @@ export interface SelanetTrendResponse {
  * 기존 Selanet API를 대체하여 GPT-4o-mini로 트렌드를 생성합니다.
  * 실패 시 빈 결과를 반환합니다 (graceful degradation).
  */
-export async function fetchTrendKeywords(genre: string): Promise<SelanetTrendResponse> {
+export async function fetchTrendKeywords(genre: string): Promise<TrendResponse> {
   try {
     const client = createAIClient()
 
@@ -70,7 +70,7 @@ export async function fetchTrendKeywords(genre: string): Promise<SelanetTrendRes
   }
 }
 
-function emptyResponse(): SelanetTrendResponse {
+function emptyResponse(): TrendResponse {
   return {
     keywords: [],
     popularPatterns: [],
