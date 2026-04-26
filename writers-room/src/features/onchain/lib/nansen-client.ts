@@ -1,11 +1,15 @@
-import { createPublicClient, http, formatEther } from 'viem'
+import { createPublicClient, http, fallback, formatEther } from 'viem'
 import { base } from 'viem/chains'
 import { createClient } from '@/lib/supabase/server'
 import type { NansenWalletData } from './schemas'
 
 const publicClient = createPublicClient({
   chain: base,
-  transport: http(),
+  transport: fallback([
+    http('https://mainnet.base.org'),
+    http('https://base.meowrpc.com'),
+    http(), // viem default
+  ]),
 })
 
 /**

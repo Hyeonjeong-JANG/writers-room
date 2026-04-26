@@ -1,4 +1,4 @@
-import { createAIClient, getDefaultModel } from '@/lib/ai/client'
+import { createAIClient, getDefaultModel, withRetry } from '@/lib/ai/client'
 import { fetchTrendKeywords } from '@/lib/trends/client'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { AgentRow, DiscussionLogEntry, DiscussionResult, GeneratedChapter } from './schemas'
@@ -84,7 +84,7 @@ export async function buildContext(
 }
 
 // ============================================
-// FLock API 호출
+// AI 호출 (재시도 포함)
 // ============================================
 
 async function callAgent(
@@ -95,21 +95,8 @@ async function callAgent(
   const client = createAIClient()
   const model = agent.model || getDefaultModel()
 
-  try {
-    const response = await client.chat.completions.create({
-      model,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      max_tokens: 1024,
-      temperature: 0.8,
-    })
-
-    return response.choices[0]?.message?.content ?? ''
-  } catch (error) {
-    // 1회 재시도
-    try {
+  return withRetry(
+    async () => {
       const response = await client.chat.completions.create({
         model,
         messages: [
@@ -120,12 +107,9 @@ async function callAgent(
         temperature: 0.8,
       })
       return response.choices[0]?.message?.content ?? ''
-    } catch {
-      throw new Error(
-        `에이전트 "${agent.name}" 호출 실패: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      )
-    }
-  }
+    },
+    { maxRetries: 2, label: `agent:${agent.name}` },
+  )
 }
 
 // ============================================
