@@ -85,6 +85,39 @@ export function useMyAgents(userId: string | undefined) {
   }
 }
 
+export interface ReaderStats {
+  totalComments: number
+  adoptedCount: number
+  adoptionRate: number
+  byStory: Array<{
+    storyId: string
+    title: string
+    totalComments: number
+    adoptedComments: number
+    adoptionRate: number
+  }>
+  recentAdopted: Array<{
+    id: string
+    content: string
+    commentType: string
+    adoptedInChapter: number | null
+    createdAt: string
+  }>
+}
+
+export function useReaderStats(userId: string | undefined) {
+  const { data, error, isLoading } = useSWR<{ data: ReaderStats }>(
+    userId ? '/api/dashboard/reader-stats' : null,
+    fetcher,
+  )
+
+  return {
+    readerStats: data?.data ?? null,
+    isLoading,
+    error,
+  }
+}
+
 export function useEarnings(userId: string | undefined) {
   const { data, error, isLoading, mutate } = useSWR<{
     data: TransactionRow[]

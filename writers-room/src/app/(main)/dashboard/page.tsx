@@ -28,6 +28,7 @@ import {
   useMyStories,
   useMyAgents,
   useEarnings,
+  useReaderStats,
 } from '@/features/dashboard/hooks/use-dashboard'
 import { ROLE_LABELS, ROLE_COLORS } from '@/features/agent/lib/schemas'
 import type { AgentRole } from '@/features/agent/lib/schemas'
@@ -176,6 +177,7 @@ export default function DashboardPage() {
           <TabsTrigger value="stories">내 스토리</TabsTrigger>
           <TabsTrigger value="agents">내 에이전트</TabsTrigger>
           <TabsTrigger value="earnings">수익</TabsTrigger>
+          <TabsTrigger value="reader">독자 활동</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="mt-4">
@@ -189,6 +191,9 @@ export default function DashboardPage() {
         </TabsContent>
         <TabsContent value="earnings" className="mt-4">
           <EarningsSection userId={user.id} />
+        </TabsContent>
+        <TabsContent value="reader" className="mt-4">
+          <ReaderSection userId={user.id} />
         </TabsContent>
       </Tabs>
     </div>
@@ -610,6 +615,138 @@ function MyAgentsSection({ userId }: { userId: string }) {
           </Card>
         )
       })}
+    </div>
+  )
+}
+
+// ============================================
+// Earnings Section
+// ============================================
+
+function ReaderSection({ userId }: { userId: string }) {
+  const { readerStats, isLoading } = useReaderStats(userId)
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Skeleton key={i} className="h-24 rounded-lg" />
+        ))}
+      </div>
+    )
+  }
+
+  if (!readerStats || readerStats.totalComments === 0) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center py-12">
+          <Award className="text-muted-foreground mb-3 h-10 w-10" />
+          <p className="text-muted-foreground text-sm">아직 댓글 활동이 없습니다</p>
+          <p className="text-muted-foreground mt-1 text-xs">
+            스토리에 댓글을 달면 여기에 통계가 표시됩니다
+          </p>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* 요약 카드 */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <Card>
+          <CardContent className="p-4 text-center">
+            <p className="text-muted-foreground text-xs">총 댓글</p>
+            <p className="mt-1 text-2xl font-bold">{readerStats.totalComments}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <p className="text-muted-foreground text-xs">채택된 댓글</p>
+            <p className="mt-1 text-2xl font-bold text-emerald-600">{readerStats.adoptedCount}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <p className="text-muted-foreground text-xs">채택률</p>
+            <p className="mt-1 text-2xl font-bold text-indigo-600">{readerStats.adoptionRate}%</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* 스토리별 기여 */}
+      {readerStats.byStory.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">스토리별 기여</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {readerStats.byStory.map((story) => (
+                <div key={story.storyId} className="flex items-center gap-3">
+                  <div className="min-w-0 flex-1">
+                    <Link
+                      href={`/stories/${story.storyId}`}
+                      className="text-sm font-medium hover:underline"
+                    >
+                      {story.title}
+                    </Link>
+                    <div className="mt-1 h-2 w-full rounded-full bg-gray-100">
+                      <div
+                        className="h-2 rounded-full bg-indigo-500"
+                        style={{ width: `${story.adoptionRate}%` }}
+                      />
+                    </div>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="text-sm font-medium">
+                      {story.adoptedComments}/{story.totalComments}
+                    </p>
+                    <p className="text-muted-foreground text-xs">{story.adoptionRate}%</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 최근 채택 댓글 */}
+      {readerStats.recentAdopted.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">최근 채택된 댓글</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="divide-y">
+              {readerStats.recentAdopted.map((comment) => (
+                <div key={comment.id} className="py-3">
+                  <p className="text-sm">{comment.content}</p>
+                  <div className="mt-1 flex items-center gap-2">
+                    <Badge variant="secondary" className="text-[10px]">
+                      {comment.commentType === 'idea_plot'
+                        ? '#전개제안'
+                        : comment.commentType === 'idea_character'
+                          ? '#캐릭터제안'
+                          : comment.commentType === 'idea_setting'
+                            ? '#설정제안'
+                            : '일반'}
+                    </Badge>
+                    {comment.adoptedInChapter && (
+                      <span className="text-muted-foreground text-xs">
+                        {comment.adoptedInChapter}화에 반영
+                      </span>
+                    )}
+                    <span className="text-muted-foreground text-xs">
+                      {formatDate(comment.createdAt)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }
