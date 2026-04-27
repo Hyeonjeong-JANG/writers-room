@@ -3,9 +3,10 @@
 import { use, useState, useCallback, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ArrowLeft, MessageSquare, PanelLeftClose, PanelLeftOpen, Wand2 } from 'lucide-react'
+import { ArrowLeft, MessageSquare, PanelLeftClose, PanelLeftOpen, Send, Wand2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Textarea } from '@/components/ui/textarea'
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet'
 import { useStory } from '@/features/story/hooks/use-stories'
 import { useAuth } from '@/hooks/use-auth'
@@ -31,10 +32,13 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
 
   const {
     startDiscussion,
+    submitFeedback,
     generateChapter,
     isDiscussing,
+    isSubmittingFeedback,
     isGenerating,
     discussionError,
+    feedbackError,
     generateError,
   } = useRoomActions()
 
@@ -44,6 +48,7 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [isPublishing, setIsPublishing] = useState(false)
   const [activeAgentId, setActiveAgentId] = useState<string | undefined>()
+  const [feedbackText, setFeedbackText] = useState('')
   const [autoStartStatus, setAutoStartStatus] = useState<string | null>(null)
   const autoStartTriggered = useRef(false)
 
@@ -140,6 +145,22 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
       setDiscussionLog(result.log)
     }
   }, [storyId, startDiscussion])
+
+  const handleSubmitFeedback = useCallback(async () => {
+    if (!effectiveResult || !feedbackText.trim()) return
+    setGeneratedChapter(null)
+    const result = await submitFeedback(effectiveResult.discussionId, feedbackText.trim(), {
+      onAgentSpeaking: (agentId) => setActiveAgentId(agentId),
+      onAgentMessage: (entry) => setDiscussionLog((prev) => [...prev, entry]),
+      onSummaryGenerating: () => setActiveAgentId(undefined),
+    })
+    setActiveAgentId(undefined)
+    if (result) {
+      setDiscussionResult(result)
+      setDiscussionLog(result.log)
+      setFeedbackText('')
+    }
+  }, [effectiveResult, feedbackText, submitFeedback])
 
   const handleGenerateChapter = useCallback(async () => {
     if (!effectiveResult) return
@@ -284,9 +305,9 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
             </div>
 
             {/* 에러 표시 */}
-            {(discussionError || generateError) && (
+            {(discussionError || feedbackError || generateError) && (
               <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600 dark:border-red-800 dark:bg-red-950/30 dark:text-red-400">
-                {discussionError || generateError}
+                {discussionError || feedbackError || generateError}
               </div>
             )}
 
@@ -298,6 +319,49 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
                   totalRounds={effectiveResult.totalRounds}
                   consensusReached={effectiveResult.consensusReached}
                 />
+              </div>
+            )}
+
+            {/* 사용자 피드백 입력 */}
+            {effectiveResult?.summary &&
+              !generatedChapter &&
+              !isDiscussing &&
+              !isSubmittingFeedback && (
+                <div className="mt-3 rounded-lg border p-4">
+                  <h3 className="mb-2 text-sm font-semibold">의견 보내기</h3>
+                  <p className="text-muted-foreground mb-3 text-xs">
+                    토론 결과에 대한 의견을 입력하면 에이전트들이 1라운드 추가 토론을 진행합니다.
+                    만족스러우면 아래 &quot;챕터 초안 생성&quot; 버튼을 눌러주세요.
+                  </p>
+                  <Textarea
+                    value={feedbackText}
+                    onChange={(e) => setFeedbackText(e.target.value)}
+                    placeholder="예: 주인공의 갈등을 좀 더 부각시켜주세요..."
+                    rows={3}
+                    maxLength={2000}
+                  />
+                  <div className="mt-2 flex items-center justify-between">
+                    <span className="text-muted-foreground text-xs">
+                      {feedbackText.length}/2000
+                    </span>
+                    <Button
+                      size="sm"
+                      onClick={handleSubmitFeedback}
+                      disabled={!feedbackText.trim()}
+                      className="gap-1.5"
+                    >
+                      <Send className="h-3.5 w-3.5" />
+                      피드백 반영
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+            {/* 피드백 진행 중 표시 */}
+            {isSubmittingFeedback && (
+              <div className="mt-3 flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-300">
+                <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                피드백을 반영해 추가 토론 중...
               </div>
             )}
 

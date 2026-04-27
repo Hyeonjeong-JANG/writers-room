@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { StartDiscussionSchema } from '@/features/room/lib/schemas'
-import { runDiscussion, type OnProgress } from '@/features/room/lib/orchestrator'
+import { StartDiscussionSchema, FeedbackRoundSchema } from '@/features/room/lib/schemas'
+import { runDiscussion, runFeedbackRound, type OnProgress } from '@/features/room/lib/orchestrator'
 
 export const maxDuration = 60
 
@@ -133,6 +133,113 @@ export async function POST(request: NextRequest) {
       // onProgress에서 이미 error 이벤트 전송됨
     } finally {
       // 모든 write가 완료될 때까지 대기 후 close
+      await Promise.all(writeQueue).catch(() => {})
+      try {
+        await writer.close()
+      } catch {
+        // writer already closed
+      }
+    }
+  })()
+
+  return new Response(readable, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache, no-transform',
+      Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    },
+  })
+}
+
+// PATCH /api/room/discuss - 피드백 라운드 (완료된 토론에 사용자 의견 반영, SSE 스트림)
+export async function PATCH(request: NextRequest) {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return NextResponse.json(
+      { error: { code: 'UNAUTHORIZED', message: '로그인이 필요합니다' } },
+      { status: 401 },
+    )
+  }
+
+  let body: unknown
+  try {
+    body = await request.json()
+  } catch {
+    return NextResponse.json(
+      { error: { code: 'VALIDATION_ERROR', message: '잘못된 요청 본문입니다' } },
+      { status: 400 },
+    )
+  }
+
+  const parsed = FeedbackRoundSchema.safeParse(body)
+
+  if (!parsed.success) {
+    return NextResponse.json(
+      {
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: '입력값을 확인하세요',
+          details: parsed.error.flatten(),
+        },
+      },
+      { status: 400 },
+    )
+  }
+
+  const { discussionId, feedback } = parsed.data
+
+  // 토론 소유권 확인
+  const { data: discussion, error: discError } = await supabase
+    .from('discussions')
+    .select('id, story_id, initiated_by, status')
+    .eq('id', discussionId)
+    .single()
+
+  if (discError || !discussion) {
+    return NextResponse.json(
+      { error: { code: 'NOT_FOUND', message: '토론을 찾을 수 없습니다' } },
+      { status: 404 },
+    )
+  }
+
+  if (discussion.initiated_by !== user.id) {
+    return NextResponse.json(
+      { error: { code: 'FORBIDDEN', message: '토론 시작자만 피드백을 추가할 수 있습니다' } },
+      { status: 403 },
+    )
+  }
+
+  if (discussion.status !== 'completed') {
+    return NextResponse.json(
+      { error: { code: 'INVALID_STATE', message: '완료된 토론에만 피드백을 추가할 수 있습니다' } },
+      { status: 400 },
+    )
+  }
+
+  // SSE 스트림 생성
+  const encoder = new TextEncoder()
+  const { readable, writable } = new TransformStream()
+  const writer = writable.getWriter()
+
+  const writeQueue: Promise<void>[] = []
+
+  const onProgress: OnProgress = (event) => {
+    writeQueue.push(
+      writer.write(encoder.encode(`data: ${JSON.stringify(event)}\n\n`)).catch(() => {}),
+    )
+  }
+
+  ;(async () => {
+    try {
+      await runFeedbackRound(supabase, discussionId, feedback, onProgress)
+    } catch {
+      // onProgress에서 이미 error 이벤트 전송됨
+    } finally {
       await Promise.all(writeQueue).catch(() => {})
       try {
         await writer.close()

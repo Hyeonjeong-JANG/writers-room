@@ -11,6 +11,9 @@ import {
   buildEditorPrompt,
   buildSummaryPrompt,
   buildChapterGenerationPrompt,
+  buildFeedbackPdPrompt,
+  buildFeedbackWriterPrompt,
+  buildFeedbackEditorPrompt,
 } from './prompts'
 
 const MAX_ROUNDS = 3
@@ -328,6 +331,180 @@ export async function runDiscussion(
         status: 'failed',
         discussion_log: log,
         total_rounds: log.length > 0 ? log[log.length - 1].round : 0,
+      })
+      .eq('id', discussionId)
+
+    onProgress?.({ type: 'error', error: error instanceof Error ? error.message : 'Unknown error' })
+
+    throw error
+  }
+}
+
+// ============================================
+// 사용자 피드백 라운드
+// ============================================
+
+/**
+ * 완료된 토론에 사용자 피드백을 반영해 1라운드 추가 (PD→작가→편집자)
+ * 새 요약을 생성하고 DB를 업데이트한다.
+ */
+export async function runFeedbackRound(
+  supabase: SupabaseClient,
+  discussionId: string,
+  feedback: string,
+  onProgress?: OnProgress,
+): Promise<DiscussionResult> {
+  // 1. 기존 토론 조회
+  const { data: discussion } = await supabase
+    .from('discussions')
+    .select('*')
+    .eq('id', discussionId)
+    .single()
+
+  if (!discussion) throw new Error('토론을 찾을 수 없습니다')
+  if (discussion.status !== 'completed')
+    throw new Error('완료된 토론에만 피드백을 추가할 수 있습니다')
+
+  const storyId = discussion.story_id
+
+  // 2. 에이전트 조회
+  const { data: storyAgents } = await supabase
+    .from('story_agents')
+    .select('agent_id, agent:agents(*)')
+    .eq('story_id', storyId)
+
+  const agents = (storyAgents ?? []).map((sa) => sa.agent as unknown as AgentRow)
+  const pd = agents.find((a) => a.role === 'pd')
+  const writer = agents.find((a) => a.role === 'writer')
+  const editor = agents.find((a) => a.role === 'editor')
+
+  if (!pd || !writer || !editor) {
+    throw new Error('PD, 작가, 편집자 역할의 에이전트가 모두 필요합니다.')
+  }
+
+  // 3. 컨텍스트 구성
+  const context = await buildContext(supabase, storyId, [])
+
+  // 4. 기존 로그 복원 + 상태를 in_progress로 전환
+  const log: DiscussionLogEntry[] = discussion.discussion_log ?? []
+  const feedbackRound = (discussion.total_rounds ?? 0) + 1
+
+  await supabase.from('discussions').update({ status: 'in_progress' }).eq('id', discussionId)
+
+  onProgress?.({ type: 'started', discussionId })
+
+  try {
+    const previousMessages = log
+      .map((entry) => `[${entry.agent_name}(${entry.agent_role})] ${entry.message}`)
+      .join('\n\n')
+
+    // 5. PD 발언 (피드백 반영)
+    onProgress?.({
+      type: 'agent_speaking',
+      round: feedbackRound,
+      agent: { id: pd.id, name: pd.name, role: 'pd' },
+    })
+    const pdSystemPrompt = buildAgentSystemPrompt(pd, context)
+    const pdUserPrompt = buildFeedbackPdPrompt(feedback, previousMessages)
+    const pdMessage = await callAgent(pd, pdSystemPrompt, pdUserPrompt)
+
+    const pdEntry: DiscussionLogEntry = {
+      round: feedbackRound,
+      agent_id: pd.id,
+      agent_name: pd.name,
+      agent_role: 'pd',
+      message: pdMessage,
+      timestamp: new Date().toISOString(),
+    }
+    log.push(pdEntry)
+    onProgress?.({ type: 'agent_message', entry: pdEntry })
+
+    // 6. 작가 발언 (피드백 반영)
+    onProgress?.({
+      type: 'agent_speaking',
+      round: feedbackRound,
+      agent: { id: writer.id, name: writer.name, role: 'writer' },
+    })
+    const writerSystemPrompt = buildAgentSystemPrompt(writer, context)
+    const writerUserPrompt = buildFeedbackWriterPrompt(feedback, pdMessage, previousMessages)
+    const writerMessage = await callAgent(writer, writerSystemPrompt, writerUserPrompt)
+
+    const writerEntry: DiscussionLogEntry = {
+      round: feedbackRound,
+      agent_id: writer.id,
+      agent_name: writer.name,
+      agent_role: 'writer',
+      message: writerMessage,
+      timestamp: new Date().toISOString(),
+    }
+    log.push(writerEntry)
+    onProgress?.({ type: 'agent_message', entry: writerEntry })
+
+    // 7. 편집자 발언 (피드백 반영)
+    onProgress?.({
+      type: 'agent_speaking',
+      round: feedbackRound,
+      agent: { id: editor.id, name: editor.name, role: 'editor' },
+    })
+    const editorSystemPrompt = buildAgentSystemPrompt(editor, context)
+    const editorUserPrompt = buildFeedbackEditorPrompt(feedback, pdMessage, writerMessage)
+    const editorMessage = await callAgent(editor, editorSystemPrompt, editorUserPrompt)
+
+    const editorEntry: DiscussionLogEntry = {
+      round: feedbackRound,
+      agent_id: editor.id,
+      agent_name: editor.name,
+      agent_role: 'editor',
+      message: editorMessage,
+      timestamp: new Date().toISOString(),
+    }
+    log.push(editorEntry)
+    onProgress?.({ type: 'agent_message', entry: editorEntry })
+
+    // 8. 새 요약 생성
+    onProgress?.({ type: 'summary_generating' })
+
+    const fullLog = log
+      .map(
+        (entry) =>
+          `[라운드 ${entry.round}] ${entry.agent_name}(${entry.agent_role}): ${entry.message}`,
+      )
+      .join('\n\n')
+
+    const consensusReached = editorMessage.includes('[AGREED]')
+    const summaryPrompt = buildSummaryPrompt(fullLog, consensusReached)
+    const summary = await callAgent(pd, pd.system_prompt, summaryPrompt)
+
+    // 9. 완료 상태로 업데이트
+    await supabase
+      .from('discussions')
+      .update({
+        status: 'completed',
+        discussion_log: log,
+        summary,
+        total_rounds: feedbackRound,
+        completed_at: new Date().toISOString(),
+      })
+      .eq('id', discussionId)
+
+    const result: DiscussionResult = {
+      discussionId,
+      summary,
+      totalRounds: feedbackRound,
+      log,
+      consensusReached,
+    }
+
+    onProgress?.({ type: 'completed', result })
+
+    return result
+  } catch (error) {
+    await supabase
+      .from('discussions')
+      .update({
+        status: 'completed',
+        discussion_log: log,
+        total_rounds: feedbackRound,
       })
       .eq('id', discussionId)
 

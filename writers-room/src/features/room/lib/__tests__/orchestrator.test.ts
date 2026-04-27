@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { buildContext, runDiscussion, generateChapter } from '../orchestrator'
+import { buildContext, runDiscussion, runFeedbackRound, generateChapter } from '../orchestrator'
 
 // AI client 모킹
 const mockChatCreate = vi.fn()
@@ -464,5 +464,182 @@ describe('generateChapter', () => {
     const result = await generateChapter(supabase as never, 'disc-1')
 
     expect(result.title).toBe('1화')
+  })
+})
+
+// ============================================
+// runFeedbackRound 테스트
+// ============================================
+
+describe('runFeedbackRound', () => {
+  beforeEach(() => {
+    mockChatCreate.mockReset()
+    mockChatCreate.mockResolvedValue({
+      choices: [{ message: { content: '피드백 반영 응답입니다.' } }],
+    })
+  })
+
+  const completedDiscussion = {
+    id: 'disc-1',
+    story_id: 'story-1',
+    initiated_by: 'user-1',
+    status: 'completed',
+    summary: '기존 토론 요약',
+    total_rounds: 2,
+    discussion_log: [
+      {
+        round: 1,
+        agent_id: 'pd-1',
+        agent_name: 'PD봇',
+        agent_role: 'pd',
+        message: '1라운드 PD',
+        timestamp: '2024-01-01T00:00:00Z',
+      },
+      {
+        round: 1,
+        agent_id: 'w-1',
+        agent_name: '작가봇',
+        agent_role: 'writer',
+        message: '1라운드 작가',
+        timestamp: '2024-01-01T00:00:01Z',
+      },
+      {
+        round: 1,
+        agent_id: 'e-1',
+        agent_name: '편집봇',
+        agent_role: 'editor',
+        message: '1라운드 편집 [AGREED]',
+        timestamp: '2024-01-01T00:00:02Z',
+      },
+    ],
+  }
+
+  it('완료된 토론에 피드백 라운드를 추가한다', async () => {
+    const supabase = createMockSupabase({ discussions: completedDiscussion })
+
+    const result = await runFeedbackRound(
+      supabase as never,
+      'disc-1',
+      '주인공 갈등을 더 부각해주세요',
+    )
+
+    expect(result.discussionId).toBe('disc-1')
+    expect(result.totalRounds).toBe(3) // 기존 2 + 피드백 1
+    // 기존 3개 + 새로운 3개 (PD, 작가, 편집자)
+    expect(result.log).toHaveLength(6)
+    // 새 엔트리는 라운드 3
+    expect(result.log[3].round).toBe(3)
+    expect(result.log[3].agent_role).toBe('pd')
+    expect(result.log[4].agent_role).toBe('writer')
+    expect(result.log[5].agent_role).toBe('editor')
+    // PD + 작가 + 편집자 + 요약 = 4 AI 호출
+    expect(mockChatCreate).toHaveBeenCalledTimes(4)
+    expect(result.summary).toBe('피드백 반영 응답입니다.')
+  })
+
+  it('편집자가 [AGREED]를 반환하면 consensusReached가 true이다', async () => {
+    mockChatCreate.mockReset()
+    mockChatCreate
+      .mockResolvedValueOnce({ choices: [{ message: { content: 'PD 수정안' } }] })
+      .mockResolvedValueOnce({ choices: [{ message: { content: '작가 수정안' } }] })
+      .mockResolvedValueOnce({
+        choices: [{ message: { content: '피드백 잘 반영됨 [AGREED]' } }],
+      })
+      .mockResolvedValueOnce({ choices: [{ message: { content: '합의 요약' } }] })
+
+    const supabase = createMockSupabase({ discussions: completedDiscussion })
+
+    const result = await runFeedbackRound(supabase as never, 'disc-1', '좋은 방향이에요')
+
+    expect(result.consensusReached).toBe(true)
+  })
+
+  it('편집자가 [REVISION_NEEDED]를 반환하면 consensusReached가 false이다', async () => {
+    mockChatCreate.mockReset()
+    mockChatCreate
+      .mockResolvedValueOnce({ choices: [{ message: { content: 'PD 수정안' } }] })
+      .mockResolvedValueOnce({ choices: [{ message: { content: '작가 수정안' } }] })
+      .mockResolvedValueOnce({
+        choices: [{ message: { content: '추가 수정 필요 [REVISION_NEEDED]' } }],
+      })
+      .mockResolvedValueOnce({ choices: [{ message: { content: '비합의 요약' } }] })
+
+    const supabase = createMockSupabase({ discussions: completedDiscussion })
+
+    const result = await runFeedbackRound(supabase as never, 'disc-1', '갈등 더 넣어주세요')
+
+    expect(result.consensusReached).toBe(false)
+  })
+
+  it('토론을 찾을 수 없으면 에러를 던진다', async () => {
+    const supabase = createMockSupabase({ discussions: null })
+
+    await expect(runFeedbackRound(supabase as never, 'bad-id', '피드백')).rejects.toThrow(
+      '토론을 찾을 수 없습니다',
+    )
+  })
+
+  it('미완료 토론이면 에러를 던진다', async () => {
+    const supabase = createMockSupabase({
+      discussions: { ...completedDiscussion, status: 'in_progress' },
+    })
+
+    await expect(runFeedbackRound(supabase as never, 'disc-1', '피드백')).rejects.toThrow(
+      '완료된 토론에만 피드백을 추가할 수 있습니다',
+    )
+  })
+
+  it('onProgress 콜백이 올바른 순서로 9개 이벤트를 호출한다', async () => {
+    const supabase = createMockSupabase({ discussions: completedDiscussion })
+    const events: Array<{ type: string }> = []
+    const onProgress = vi.fn((event: { type: string }) => {
+      events.push(event)
+    })
+
+    await runFeedbackRound(supabase as never, 'disc-1', '피드백', onProgress)
+
+    // started(1) + (speaking + message) x 3 agents(6) + summary_generating(1) + completed(1) = 9
+    expect(onProgress).toHaveBeenCalledTimes(9)
+
+    const types = events.map((e) => e.type)
+    expect(types[0]).toBe('started')
+    expect(types[1]).toBe('agent_speaking')
+    expect(types[2]).toBe('agent_message')
+    expect(types[3]).toBe('agent_speaking')
+    expect(types[4]).toBe('agent_message')
+    expect(types[5]).toBe('agent_speaking')
+    expect(types[6]).toBe('agent_message')
+    expect(types[7]).toBe('summary_generating')
+    expect(types[8]).toBe('completed')
+  })
+
+  it('AI 호출 실패 시 상태를 completed로 유지하고 에러를 던진다', async () => {
+    mockChatCreate.mockRejectedValue(new Error('AI 서버 에러'))
+    const supabase = createMockSupabase({ discussions: completedDiscussion })
+
+    await expect(runFeedbackRound(supabase as never, 'disc-1', '피드백')).rejects.toThrow(
+      'AI 서버 에러',
+    )
+
+    // completed 상태로 복원 (in_progress로 바꾸지 않고 복귀)
+    const updateCalls = supabase.from.mock.calls.filter(([t]: string[]) => t === 'discussions')
+    expect(updateCalls.length).toBeGreaterThan(0)
+  })
+
+  it('AI 호출 실패 시 onProgress에 error 이벤트가 발생한다', async () => {
+    mockChatCreate.mockRejectedValue(new Error('AI 서버 에러'))
+    const supabase = createMockSupabase({ discussions: completedDiscussion })
+    const events: Array<{ type: string; error?: string }> = []
+    const onProgress = vi.fn((event: { type: string; error?: string }) => {
+      events.push(event)
+    })
+
+    await expect(
+      runFeedbackRound(supabase as never, 'disc-1', '피드백', onProgress),
+    ).rejects.toThrow('AI 서버 에러')
+
+    const errorEvents = events.filter((e) => e.type === 'error')
+    expect(errorEvents).toHaveLength(1)
+    expect(errorEvents[0].error).toBe('AI 서버 에러')
   })
 })

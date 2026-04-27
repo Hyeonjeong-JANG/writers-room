@@ -153,6 +153,68 @@ ${discussionLog}
 }
 
 // ============================================
+// 사용자 피드백 라운드 프롬프트
+// ============================================
+
+/**
+ * 사용자 피드백을 반영한 PD 프롬프트
+ */
+export function buildFeedbackPdPrompt(feedback: string, previousMessages: string): string {
+  return `독자(사용자)가 토론 결과에 대해 피드백을 보냈습니다. 이를 반영하여 방향을 수정/보완해주세요.
+
+## 독자 피드백
+${feedback}
+
+## 이전 토론 내용
+${previousMessages}`
+}
+
+/**
+ * 사용자 피드백을 반영한 작가 프롬프트
+ */
+export function buildFeedbackWriterPrompt(
+  feedback: string,
+  pdMessage: string,
+  previousMessages: string,
+): string {
+  return `독자 피드백을 반영한 PD의 수정 방향을 바탕으로 장면과 전개를 다시 구상해주세요.
+
+## 독자 피드백
+${feedback}
+
+## PD 수정 방향
+${pdMessage}
+
+## 이전 토론 내용
+${previousMessages}`
+}
+
+/**
+ * 사용자 피드백을 반영한 편집자 프롬프트
+ */
+export function buildFeedbackEditorPrompt(
+  feedback: string,
+  pdMessage: string,
+  writerMessage: string,
+): string {
+  return `독자 피드백을 반영한 PD와 작가의 수정안을 검토해주세요.
+
+## 독자 피드백
+${feedback}
+
+## PD 수정 방향
+${pdMessage}
+
+## 작가 수정안
+${writerMessage}
+
+## 합의 판정
+검토 후 반드시 응답 마지막에 다음 태그 중 하나를 포함하세요:
+- [AGREED] — 독자 피드백이 충분히 반영되었고, 이대로 챕터를 작성해도 좋다고 판단될 때
+- [REVISION_NEEDED] — 추가 수정이 필요할 때 (구체적 개선점을 함께 제시)`
+}
+
+// ============================================
 // 챕터 생성 프롬프트
 // ============================================
 

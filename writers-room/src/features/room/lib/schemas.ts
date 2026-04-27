@@ -13,12 +13,21 @@ export const GenerateChapterSchema = z.object({
   discussionId: z.string().uuid('유효한 토론 ID가 필요합니다'),
 })
 
+export const FeedbackRoundSchema = z.object({
+  discussionId: z.string().uuid('유효한 토론 ID가 필요합니다'),
+  feedback: z
+    .string()
+    .min(1, '피드백 내용을 입력해주세요')
+    .max(2000, '피드백은 2000자 이내로 입력해주세요'),
+})
+
 // ============================================
 // Types
 // ============================================
 
 export type StartDiscussionInput = z.infer<typeof StartDiscussionSchema>
 export type GenerateChapterInput = z.infer<typeof GenerateChapterSchema>
+export type FeedbackRoundInput = z.infer<typeof FeedbackRoundSchema>
 
 // Discussion log entry
 export interface DiscussionLogEntry {

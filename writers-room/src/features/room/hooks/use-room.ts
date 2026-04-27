@@ -64,11 +64,13 @@ export interface DiscussionCallbacks {
   onSummaryGenerating?: () => void
 }
 
-// 토론 시작 + 챕터 생성 액션
+// 토론 시작 + 피드백 + 챕터 생성 액션
 export function useRoomActions() {
   const [isDiscussing, setIsDiscussing] = useState(false)
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
   const [discussionError, setDiscussionError] = useState<string | null>(null)
+  const [feedbackError, setFeedbackError] = useState<string | null>(null)
   const [generateError, setGenerateError] = useState<string | null>(null)
 
   const startDiscussion = useCallback(
@@ -168,6 +170,100 @@ export function useRoomActions() {
     [],
   )
 
+  const submitFeedback = useCallback(
+    async (
+      discussionId: string,
+      feedback: string,
+      callbacks?: DiscussionCallbacks,
+    ): Promise<DiscussionResult | null> => {
+      setIsSubmittingFeedback(true)
+      setFeedbackError(null)
+
+      try {
+        const res = await fetch('/api/room/discuss', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ discussionId, feedback }),
+        })
+
+        if (!res.ok) {
+          const json = await res.json()
+          setFeedbackError(json.error?.message ?? '피드백 제출에 실패했습니다')
+          return null
+        }
+
+        const reader = res.body?.getReader()
+        if (!reader) {
+          setFeedbackError('스트림을 열 수 없습니다')
+          return null
+        }
+
+        const decoder = new TextDecoder()
+        let buffer = ''
+        let finalResult: DiscussionResult | null = null
+
+        const processSSELine = (line: string) => {
+          const trimmed = line.trim()
+          if (!trimmed.startsWith('data: ')) return
+
+          try {
+            const event = JSON.parse(trimmed.slice(6))
+
+            switch (event.type) {
+              case 'agent_speaking':
+                callbacks?.onAgentSpeaking?.(
+                  event.agent.id,
+                  event.agent.name,
+                  event.agent.role,
+                  event.round,
+                )
+                break
+              case 'agent_message':
+                callbacks?.onAgentMessage?.(event.entry)
+                break
+              case 'summary_generating':
+                callbacks?.onSummaryGenerating?.()
+                break
+              case 'completed':
+                finalResult = event.result
+                break
+              case 'error':
+                setFeedbackError(event.error ?? '피드백 반영 중 오류가 발생했습니다')
+                break
+            }
+          } catch {
+            // JSON 파싱 실패 — 무시
+          }
+        }
+
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+
+          buffer += decoder.decode(value, { stream: true })
+          const parts = buffer.split('\n\n')
+          buffer = parts.pop() ?? ''
+
+          for (const part of parts) {
+            processSSELine(part)
+          }
+        }
+
+        if (buffer.trim()) {
+          processSSELine(buffer)
+        }
+
+        return finalResult
+      } catch {
+        setFeedbackError('네트워크 오류가 발생했습니다')
+        return null
+      } finally {
+        setIsSubmittingFeedback(false)
+      }
+    },
+    [],
+  )
+
   const generateChapter = useCallback(
     async (discussionId: string): Promise<GeneratedChapter | null> => {
       setIsGenerating(true)
@@ -200,10 +296,13 @@ export function useRoomActions() {
 
   return {
     startDiscussion,
+    submitFeedback,
     generateChapter,
     isDiscussing,
+    isSubmittingFeedback,
     isGenerating,
     discussionError,
+    feedbackError,
     generateError,
   }
 }
