@@ -180,17 +180,40 @@ describe('runDiscussion', () => {
     })
   })
 
-  it('2라운드 토론을 실행하고 결과를 반환한다', async () => {
+  it('3라운드 토론을 실행하고 합의 없으면 강제 종료한다', async () => {
     const supabase = createMockSupabase()
 
     const result = await runDiscussion(supabase as never, 'story-1', 'user-1', [])
 
     expect(result.discussionId).toBe('disc-1')
-    expect(result.totalRounds).toBe(2)
-    // PD + 작가 + 편집자 = 3명 × 2라운드 = 6 + 1(요약) = 7 AI 호출
-    expect(mockChatCreate).toHaveBeenCalledTimes(7)
-    expect(result.log).toHaveLength(6)
+    expect(result.totalRounds).toBe(3)
+    expect(result.consensusReached).toBe(false)
+    // PD + 작가 + 편집자 = 3명 × 3라운드 = 9 + 1(요약) = 10 AI 호출
+    expect(mockChatCreate).toHaveBeenCalledTimes(10)
+    expect(result.log).toHaveLength(9)
     expect(result.summary).toBe('에이전트 응답입니다.')
+  })
+
+  it('편집자가 [AGREED]를 반환하면 조기 종료한다', async () => {
+    mockChatCreate.mockReset()
+    mockChatCreate
+      .mockResolvedValueOnce({ choices: [{ message: { content: 'PD 방향 제안' } }] })
+      .mockResolvedValueOnce({ choices: [{ message: { content: '작가 구상' } }] })
+      .mockResolvedValueOnce({
+        choices: [{ message: { content: '좋습니다. 이대로 진행합시다. [AGREED]' } }],
+      })
+      .mockResolvedValueOnce({ choices: [{ message: { content: '합의 요약' } }] })
+
+    const supabase = createMockSupabase()
+
+    const result = await runDiscussion(supabase as never, 'story-1', 'user-1', [])
+
+    expect(result.totalRounds).toBe(1)
+    expect(result.consensusReached).toBe(true)
+    expect(result.log).toHaveLength(3)
+    // 3 agent calls + 1 summary = 4
+    expect(mockChatCreate).toHaveBeenCalledTimes(4)
+    expect(result.summary).toBe('합의 요약')
   })
 
   it('에이전트가 없으면 에러를 던진다', async () => {
@@ -243,9 +266,14 @@ describe('runDiscussion', () => {
     // 라운드 2
     expect(result.log[3].agent_role).toBe('pd')
     expect(result.log[3].round).toBe(2)
+    // 라운드 3
+    expect(result.log[6].agent_role).toBe('pd')
+    expect(result.log[6].round).toBe(3)
+    expect(result.log[8].agent_role).toBe('editor')
+    expect(result.log[8].round).toBe(3)
   })
 
-  it('onProgress 콜백이 올바른 순서로 15개 이벤트를 호출한다', async () => {
+  it('onProgress 콜백이 올바른 순서로 21개 이벤트를 호출한다', async () => {
     const supabase = createMockSupabase()
     const events: Array<{ type: string }> = []
     const onProgress = vi.fn((event: { type: string }) => {
@@ -254,8 +282,8 @@ describe('runDiscussion', () => {
 
     await runDiscussion(supabase as never, 'story-1', 'user-1', [], onProgress)
 
-    // started(1) + (speaking + message) x 3 agents x 2 rounds(12) + summary_generating(1) + completed(1) = 15
-    expect(onProgress).toHaveBeenCalledTimes(15)
+    // started(1) + (speaking + message) x 3 agents x 3 rounds(18) + summary_generating(1) + completed(1) = 21
+    expect(onProgress).toHaveBeenCalledTimes(21)
 
     const types = events.map((e) => e.type)
     expect(types[0]).toBe('started')
@@ -273,9 +301,39 @@ describe('runDiscussion', () => {
     expect(types[10]).toBe('agent_message')
     expect(types[11]).toBe('agent_speaking')
     expect(types[12]).toBe('agent_message')
+    // 라운드 3: speaking, message x 3
+    expect(types[13]).toBe('agent_speaking')
+    expect(types[14]).toBe('agent_message')
+    expect(types[15]).toBe('agent_speaking')
+    expect(types[16]).toBe('agent_message')
+    expect(types[17]).toBe('agent_speaking')
+    expect(types[18]).toBe('agent_message')
     // 요약 + 완료
-    expect(types[13]).toBe('summary_generating')
-    expect(types[14]).toBe('completed')
+    expect(types[19]).toBe('summary_generating')
+    expect(types[20]).toBe('completed')
+  })
+
+  it('조기 종료 시 onProgress 이벤트가 줄어든다', async () => {
+    mockChatCreate.mockReset()
+    mockChatCreate
+      .mockResolvedValueOnce({ choices: [{ message: { content: 'PD' } }] })
+      .mockResolvedValueOnce({ choices: [{ message: { content: '작가' } }] })
+      .mockResolvedValueOnce({ choices: [{ message: { content: '동의 [AGREED]' } }] })
+      .mockResolvedValueOnce({ choices: [{ message: { content: '요약' } }] })
+
+    const supabase = createMockSupabase()
+    const events: Array<{ type: string }> = []
+    const onProgress = vi.fn((event: { type: string }) => {
+      events.push(event)
+    })
+
+    await runDiscussion(supabase as never, 'story-1', 'user-1', [], onProgress)
+
+    // started(1) + (speaking + message) x 3 agents x 1 round(6) + summary_generating(1) + completed(1) = 9
+    expect(onProgress).toHaveBeenCalledTimes(9)
+    const types = events.map((e) => e.type)
+    expect(types[types.length - 1]).toBe('completed')
+    expect(types[types.length - 2]).toBe('summary_generating')
   })
 
   it('onProgress 없이 호출해도 기존 동작이 유지된다', async () => {
@@ -284,8 +342,8 @@ describe('runDiscussion', () => {
     const result = await runDiscussion(supabase as never, 'story-1', 'user-1', [])
 
     expect(result.discussionId).toBe('disc-1')
-    expect(result.totalRounds).toBe(2)
-    expect(result.log).toHaveLength(6)
+    expect(result.totalRounds).toBe(3)
+    expect(result.log).toHaveLength(9)
   })
 
   it('AI 호출 실패 시 onProgress에 error 이벤트가 발생한다', async () => {

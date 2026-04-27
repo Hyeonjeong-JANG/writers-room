@@ -13,7 +13,7 @@ import {
   buildChapterGenerationPrompt,
 } from './prompts'
 
-const MAX_ROUNDS = 2
+const MAX_ROUNDS = 3
 const MAX_CHAPTER_SUMMARY_LENGTH = 500
 
 // ============================================
@@ -195,6 +195,9 @@ export async function runDiscussion(
 
   try {
     // 4. 라운드 실행
+    let consensusReached = false
+    let actualRounds = 0
+
     for (let round = 1; round <= MAX_ROUNDS; round++) {
       const previousMessages = log
         .map((entry) => `[${entry.agent_name}(${entry.agent_role})] ${entry.message}`)
@@ -207,7 +210,7 @@ export async function runDiscussion(
         agent: { id: pd.id, name: pd.name, role: 'pd' },
       })
       const pdSystemPrompt = buildAgentSystemPrompt(pd, context)
-      const pdUserPrompt = buildPdPrompt(round, previousMessages)
+      const pdUserPrompt = buildPdPrompt(round, MAX_ROUNDS, previousMessages)
       const pdMessage = await callAgent(pd, pdSystemPrompt, pdUserPrompt)
 
       const pdEntry: DiscussionLogEntry = {
@@ -249,7 +252,7 @@ export async function runDiscussion(
         agent: { id: editor.id, name: editor.name, role: 'editor' },
       })
       const editorSystemPrompt = buildAgentSystemPrompt(editor, context)
-      const editorUserPrompt = buildEditorPrompt(pdMessage, writerMessage)
+      const editorUserPrompt = buildEditorPrompt(pdMessage, writerMessage, round, MAX_ROUNDS)
       const editorMessage = await callAgent(editor, editorSystemPrompt, editorUserPrompt)
 
       const editorEntry: DiscussionLogEntry = {
@@ -263,6 +266,8 @@ export async function runDiscussion(
       log.push(editorEntry)
       onProgress?.({ type: 'agent_message', entry: editorEntry })
 
+      actualRounds = round
+
       // 라운드 완료 시 DB 업데이트
       await supabase
         .from('discussions')
@@ -271,6 +276,12 @@ export async function runDiscussion(
           total_rounds: round,
         })
         .eq('id', discussionId)
+
+      // 편집자 합의 확인 → 조기 종료
+      if (editorMessage.includes('[AGREED]')) {
+        consensusReached = true
+        break
+      }
     }
 
     // 5. 토론 요약 생성
@@ -283,7 +294,7 @@ export async function runDiscussion(
       )
       .join('\n\n')
 
-    const summaryPrompt = buildSummaryPrompt(fullLog)
+    const summaryPrompt = buildSummaryPrompt(fullLog, consensusReached)
     const summary = await callAgent(pd, pd.system_prompt, summaryPrompt)
 
     // 6. 완료 상태로 업데이트
@@ -293,7 +304,7 @@ export async function runDiscussion(
         status: 'completed',
         discussion_log: log,
         summary,
-        total_rounds: MAX_ROUNDS,
+        total_rounds: actualRounds,
         completed_at: new Date().toISOString(),
       })
       .eq('id', discussionId)
@@ -301,8 +312,9 @@ export async function runDiscussion(
     const result: DiscussionResult = {
       discussionId,
       summary,
-      totalRounds: MAX_ROUNDS,
+      totalRounds: actualRounds,
       log,
+      consensusReached,
     }
 
     onProgress?.({ type: 'completed', result })

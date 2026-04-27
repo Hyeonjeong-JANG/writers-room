@@ -81,6 +81,7 @@ export interface DiscussionResult {
   summary: string
   totalRounds: number
   log: DiscussionLogEntry[]
+  consensusReached?: boolean
 }
 
 // Chapter generation result

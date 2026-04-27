@@ -73,13 +73,16 @@ export function buildAgentSystemPrompt(agent: AgentRow, context: StoryContext): 
 // ============================================
 
 /**
- * PD에게 보내는 첫 라운드 프롬프트
+ * PD에게 보내는 프롬프트 (라운드별 분기)
  */
-export function buildPdPrompt(round: number, previousMessages: string): string {
+export function buildPdPrompt(round: number, maxRounds: number, previousMessages: string): string {
   if (round === 1) {
     return `이번 회차의 스토리 방향을 제안해주세요. 핵심 갈등, 전환점, 독자를 끌어당길 포인트를 포함해주세요.`
   }
-  return `이전 토론 내용을 바탕으로 최종 방향을 정리해주세요:\n\n${previousMessages}`
+  if (round === maxRounds) {
+    return `이전 토론 내용을 바탕으로 최종 방향을 정리해주세요:\n\n${previousMessages}`
+  }
+  return `편집자의 피드백을 반영해 방향을 보완해주세요:\n\n${previousMessages}`
 }
 
 /**
@@ -95,32 +98,57 @@ ${previousMessages ? `이전 토론:\n${previousMessages}` : ''}`
 }
 
 /**
- * 편집자에게 보내는 프롬프트
+ * 편집자에게 보내는 프롬프트 (합의 판정 태그 포함)
  */
-export function buildEditorPrompt(pdMessage: string, writerMessage: string): string {
+export function buildEditorPrompt(
+  pdMessage: string,
+  writerMessage: string,
+  round: number,
+  maxRounds: number,
+): string {
+  const isLastRound = round === maxRounds
+
   return `PD와 작가의 의견을 검토하고, 개선점과 주의사항을 제안해주세요.
 
 PD 의견:
 ${pdMessage}
 
 작가 의견:
-${writerMessage}`
+${writerMessage}
+
+## 합의 판정
+검토 후 반드시 응답 마지막에 다음 태그 중 하나를 포함하세요:
+- [AGREED] — PD와 작가의 방향에 동의하며, 이대로 챕터를 작성해도 좋다고 판단될 때
+- [REVISION_NEEDED] — 수정이 필요할 때 (구체적 개선점을 함께 제시)${isLastRound ? '\n\n⚠️ 이번이 마지막 라운드입니다. 완벽하지 않더라도 최선의 방향을 판단해주세요.' : ''}`
 }
 
 // ============================================
 // 토론 요약 프롬프트
 // ============================================
 
-export function buildSummaryPrompt(discussionLog: string): string {
-  return `다음 작가방 토론 내용을 요약해주세요. 핵심 결정사항, 스토리 방향, 주요 장면을 정리해주세요.
+export function buildSummaryPrompt(discussionLog: string, consensusReached: boolean): string {
+  if (consensusReached) {
+    return `다음 작가방 토론에서 에이전트들이 합의에 도달했습니다. 합의된 내용을 정리해주세요.
 
 토론 내용:
 ${discussionLog}
 
 다음 형식으로 요약해주세요:
-1. 핵심 방향: (한 줄 요약)
+1. 합의 방향: (한 줄 요약)
 2. 주요 장면: (3-5개 bullet)
-3. 주의사항: (편집자 지적 사항)
+3. 편집 지침: (편집자가 동의한 방향 기준)
+4. 다음 회차 훅: (독자 유인 포인트)`
+  }
+
+  return `다음 작가방 토론이 마지막 라운드까지 진행되었지만 완전한 합의에 이르지 못했습니다. PD로서 최종 방향을 결정해주세요.
+
+토론 내용:
+${discussionLog}
+
+다음 형식으로 요약해주세요:
+1. 최종 결정 방향: (PD 판단으로 한 줄 요약)
+2. 주요 장면: (3-5개 bullet)
+3. 미해결 쟁점: (합의되지 않은 부분과 PD의 판단)
 4. 다음 회차 훅: (독자 유인 포인트)`
 }
 

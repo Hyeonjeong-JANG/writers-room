@@ -50,7 +50,7 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
   const isCreator = user && story && user.id === story.creator_id
 
   // DB에서 복원한 토론 또는 방금 시작한 토론
-  const restoredResult = latestDiscussion
+  const restoredResult: DiscussionResult | null = latestDiscussion
     ? {
         discussionId: latestDiscussion.id,
         summary: latestDiscussion.summary ?? '',
@@ -296,6 +296,7 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
                 <DiscussionSummary
                   summary={effectiveResult.summary}
                   totalRounds={effectiveResult.totalRounds}
+                  consensusReached={effectiveResult.consensusReached}
                 />
               </div>
             )}
