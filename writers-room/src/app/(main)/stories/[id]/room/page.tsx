@@ -3,6 +3,7 @@
 import { use, useState, useCallback, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { toast } from 'sonner'
 import { ArrowLeft, MessageSquare, PanelLeftClose, PanelLeftOpen, Send, Wand2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -134,6 +135,17 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
     generateChapter,
   ])
 
+  const warnLowCredits = useCallback(async () => {
+    const updated = await refreshCredits()
+    const total = updated?.data?.totalCredits ?? null
+    if (total === null) return
+    if (total === 0) {
+      toast.warning('크레딧이 모두 소진되었습니다. 충전이 필요합니다')
+    } else if (total <= 5) {
+      toast.warning(`크레딧이 ${total}개 남았습니다`)
+    }
+  }, [refreshCredits])
+
   const handleStartDiscussion = useCallback(async () => {
     setDiscussionLog([])
     setGeneratedChapter(null)
@@ -147,8 +159,8 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
       setDiscussionResult(result)
       setDiscussionLog(result.log)
     }
-    refreshCredits()
-  }, [storyId, startDiscussion, refreshCredits])
+    warnLowCredits()
+  }, [storyId, startDiscussion, warnLowCredits])
 
   const handleSubmitFeedback = useCallback(async () => {
     if (!effectiveResult || !feedbackText.trim()) return
@@ -164,8 +176,8 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
       setDiscussionLog(result.log)
       setFeedbackText('')
     }
-    refreshCredits()
-  }, [effectiveResult, feedbackText, submitFeedback, refreshCredits])
+    warnLowCredits()
+  }, [effectiveResult, feedbackText, submitFeedback, warnLowCredits])
 
   const handleGenerateChapter = useCallback(async () => {
     if (!effectiveResult) return
@@ -173,8 +185,8 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
     if (chapter) {
       setGeneratedChapter(chapter)
     }
-    refreshCredits()
-  }, [effectiveResult, generateChapter, refreshCredits])
+    warnLowCredits()
+  }, [effectiveResult, generateChapter, warnLowCredits])
 
   const handlePublish = useCallback(
     async (title: string, content: string) => {
