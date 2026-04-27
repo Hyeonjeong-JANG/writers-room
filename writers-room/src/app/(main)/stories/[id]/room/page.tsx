@@ -74,7 +74,13 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
 
     const run = async () => {
       setAutoStartStatus('AI 에이전트들이 토론 중...')
-      const result = await startDiscussion(storyId)
+      setDiscussionLog([])
+      const result = await startDiscussion(storyId, [], {
+        onAgentSpeaking: (agentId) => setActiveAgentId(agentId),
+        onAgentMessage: (entry) => setDiscussionLog((prev) => [...prev, entry]),
+        onSummaryGenerating: () => setActiveAgentId(undefined),
+      })
+      setActiveAgentId(undefined)
       if (result) {
         setDiscussionResult(result)
         setDiscussionLog(result.log)
@@ -121,11 +127,17 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
   ])
 
   const handleStartDiscussion = useCallback(async () => {
-    const result = await startDiscussion(storyId)
+    setDiscussionLog([])
+    setGeneratedChapter(null)
+    const result = await startDiscussion(storyId, [], {
+      onAgentSpeaking: (agentId) => setActiveAgentId(agentId),
+      onAgentMessage: (entry) => setDiscussionLog((prev) => [...prev, entry]),
+      onSummaryGenerating: () => setActiveAgentId(undefined),
+    })
+    setActiveAgentId(undefined)
     if (result) {
       setDiscussionResult(result)
       setDiscussionLog(result.log)
-      setGeneratedChapter(null)
     }
   }, [storyId, startDiscussion])
 
@@ -250,53 +262,68 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
           <aside className="hidden w-64 shrink-0 overflow-y-auto lg:block">{sidebarContent}</aside>
         )}
 
-        {/* 메인 채팅 영역 */}
+        {/* 메인 영역 */}
         <div className="flex min-w-0 flex-1 flex-col">
-          {/* 토론 로그 */}
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border">
-            <DiscussionLog log={effectiveLog} isLoading={isDiscussing} />
+          {/* 단일 스크롤 영역: 토론 로그 + 요약 + 챕터 미리보기 */}
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <div className="rounded-lg border">
+              <DiscussionLog
+                log={effectiveLog}
+                isLoading={isDiscussing}
+                activeAgent={
+                  activeAgentId
+                    ? (() => {
+                        const agent = storyAgents
+                          .map((sa) => sa.agent)
+                          .find((a) => a?.id === activeAgentId)
+                        return agent ? { name: agent.name, role: agent.role } : null
+                      })()
+                    : null
+                }
+              />
+            </div>
+
+            {/* 에러 표시 */}
+            {(discussionError || generateError) && (
+              <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600 dark:border-red-800 dark:bg-red-950/30 dark:text-red-400">
+                {discussionError || generateError}
+              </div>
+            )}
+
+            {/* 토론 요약 */}
+            {effectiveResult?.summary && (
+              <div className="mt-3">
+                <DiscussionSummary
+                  summary={effectiveResult.summary}
+                  totalRounds={effectiveResult.totalRounds}
+                />
+              </div>
+            )}
+
+            {/* 챕터 미리보기 */}
+            {generatedChapter && effectiveResult && (
+              <div className="mt-3">
+                <ChapterPreview
+                  chapter={generatedChapter}
+                  storyId={storyId}
+                  discussionId={effectiveResult.discussionId}
+                  onPublish={handlePublish}
+                  isPublishing={isPublishing}
+                />
+              </div>
+            )}
+
+            {/* 자동 시작 상태 표시 */}
+            {autoStartStatus && (
+              <div className="mt-3 flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-300">
+                <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                {autoStartStatus}
+              </div>
+            )}
           </div>
 
-          {/* 에러 표시 */}
-          {(discussionError || generateError) && (
-            <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600 dark:border-red-800 dark:bg-red-950/30 dark:text-red-400">
-              {discussionError || generateError}
-            </div>
-          )}
-
-          {/* 토론 요약 */}
-          {effectiveResult?.summary && (
-            <div className="mt-3">
-              <DiscussionSummary
-                summary={effectiveResult.summary}
-                totalRounds={effectiveResult.totalRounds}
-              />
-            </div>
-          )}
-
-          {/* 챕터 미리보기 */}
-          {generatedChapter && effectiveResult && (
-            <div className="mt-3">
-              <ChapterPreview
-                chapter={generatedChapter}
-                storyId={storyId}
-                discussionId={effectiveResult.discussionId}
-                onPublish={handlePublish}
-                isPublishing={isPublishing}
-              />
-            </div>
-          )}
-
-          {/* 자동 시작 상태 표시 */}
-          {autoStartStatus && (
-            <div className="mt-3 flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-300">
-              <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-              {autoStartStatus}
-            </div>
-          )}
-
-          {/* 하단 액션 바 */}
-          <div className="mt-3 flex items-center gap-2 border-t pt-3">
+          {/* 하단 액션 바 (고정) */}
+          <div className="bg-background mt-3 flex shrink-0 items-center gap-2 border-t pt-3">
             <Button
               onClick={handleStartDiscussion}
               disabled={isDiscussing || agentsLoading}

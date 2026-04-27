@@ -9,16 +9,15 @@ import type { DiscussionLogEntry } from '@/features/room/lib/schemas'
 interface DiscussionLogProps {
   log: DiscussionLogEntry[]
   isLoading: boolean
+  activeAgent?: { name: string; role: string } | null
 }
 
-export function DiscussionLog({ log, isLoading }: DiscussionLogProps) {
-  const scrollRef = useRef<HTMLDivElement>(null)
+export function DiscussionLog({ log, isLoading, activeAgent }: DiscussionLogProps) {
+  const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
-    }
-  }, [log.length])
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [log.length, isLoading])
 
   if (log.length === 0 && !isLoading) {
     return (
@@ -41,7 +40,7 @@ export function DiscussionLog({ log, isLoading }: DiscussionLogProps) {
   }, {})
 
   return (
-    <div ref={scrollRef} className="flex-1 space-y-6 overflow-y-auto p-4">
+    <div className="space-y-6 p-4">
       {Object.entries(rounds).map(([round, entries]) => (
         <div key={round} className="space-y-4">
           <div className="flex items-center gap-2">
@@ -97,7 +96,43 @@ export function DiscussionLog({ log, isLoading }: DiscussionLogProps) {
         </div>
       ))}
 
-      {isLoading && (
+      {isLoading && activeAgent && (
+        <div className="flex items-center gap-3 py-4">
+          <div className="flex gap-1">
+            {(() => {
+              const config = AGENT_ROLE_CONFIG[activeAgent.role as AgentRole]
+              const dotColor = config?.color ?? undefined
+              return (
+                <>
+                  <span
+                    className="h-2 w-2 animate-bounce rounded-full [animation-delay:-0.3s]"
+                    style={{ backgroundColor: dotColor }}
+                  />
+                  <span
+                    className="h-2 w-2 animate-bounce rounded-full [animation-delay:-0.15s]"
+                    style={{ backgroundColor: dotColor }}
+                  />
+                  <span
+                    className="h-2 w-2 animate-bounce rounded-full"
+                    style={{ backgroundColor: dotColor }}
+                  />
+                </>
+              )
+            })()}
+          </div>
+          <span className="text-muted-foreground text-sm">
+            <span
+              className="font-medium"
+              style={{ color: AGENT_ROLE_CONFIG[activeAgent.role as AgentRole]?.color }}
+            >
+              {activeAgent.name}
+            </span>{' '}
+            발언 중...
+          </span>
+        </div>
+      )}
+
+      {isLoading && !activeAgent && (
         <div className="flex items-center gap-3 py-4">
           <div className="flex gap-1">
             <span className="bg-primary h-2 w-2 animate-bounce rounded-full [animation-delay:-0.3s]" />
@@ -107,6 +142,8 @@ export function DiscussionLog({ log, isLoading }: DiscussionLogProps) {
           <span className="text-muted-foreground text-sm">에이전트들이 토론 중입니다...</span>
         </div>
       )}
+
+      <div ref={bottomRef} />
     </div>
   )
 }

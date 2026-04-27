@@ -17,6 +17,26 @@ const MAX_ROUNDS = 2
 const MAX_CHAPTER_SUMMARY_LENGTH = 500
 
 // ============================================
+// 진행 상황 콜백 타입
+// ============================================
+
+export type OnProgress = (event: {
+  type:
+    | 'started'
+    | 'agent_speaking'
+    | 'agent_message'
+    | 'summary_generating'
+    | 'completed'
+    | 'error'
+  discussionId?: string
+  round?: number
+  agent?: { id: string; name: string; role: string }
+  entry?: DiscussionLogEntry
+  result?: DiscussionResult
+  error?: string
+}) => void
+
+// ============================================
 // 컨텍스트 구성
 // ============================================
 
@@ -124,6 +144,7 @@ export async function runDiscussion(
   storyId: string,
   userId: string,
   adoptedCommentIds: string[],
+  onProgress?: OnProgress,
 ): Promise<DiscussionResult> {
   // 1. 스토리에 배치된 에이전트 조회
   const { data: storyAgents } = await supabase
@@ -170,6 +191,8 @@ export async function runDiscussion(
   const discussionId = discussion.id
   const log: DiscussionLogEntry[] = []
 
+  onProgress?.({ type: 'started', discussionId })
+
   try {
     // 4. 라운드 실행
     for (let round = 1; round <= MAX_ROUNDS; round++) {
@@ -178,46 +201,67 @@ export async function runDiscussion(
         .join('\n\n')
 
       // PD 발언
+      onProgress?.({
+        type: 'agent_speaking',
+        round,
+        agent: { id: pd.id, name: pd.name, role: 'pd' },
+      })
       const pdSystemPrompt = buildAgentSystemPrompt(pd, context)
       const pdUserPrompt = buildPdPrompt(round, previousMessages)
       const pdMessage = await callAgent(pd, pdSystemPrompt, pdUserPrompt)
 
-      log.push({
+      const pdEntry: DiscussionLogEntry = {
         round,
         agent_id: pd.id,
         agent_name: pd.name,
         agent_role: 'pd',
         message: pdMessage,
         timestamp: new Date().toISOString(),
-      })
+      }
+      log.push(pdEntry)
+      onProgress?.({ type: 'agent_message', entry: pdEntry })
 
       // 작가 발언
+      onProgress?.({
+        type: 'agent_speaking',
+        round,
+        agent: { id: writer.id, name: writer.name, role: 'writer' },
+      })
       const writerSystemPrompt = buildAgentSystemPrompt(writer, context)
       const writerUserPrompt = buildWriterPrompt(pdMessage, previousMessages)
       const writerMessage = await callAgent(writer, writerSystemPrompt, writerUserPrompt)
 
-      log.push({
+      const writerEntry: DiscussionLogEntry = {
         round,
         agent_id: writer.id,
         agent_name: writer.name,
         agent_role: 'writer',
         message: writerMessage,
         timestamp: new Date().toISOString(),
-      })
+      }
+      log.push(writerEntry)
+      onProgress?.({ type: 'agent_message', entry: writerEntry })
 
       // 편집자 발언
+      onProgress?.({
+        type: 'agent_speaking',
+        round,
+        agent: { id: editor.id, name: editor.name, role: 'editor' },
+      })
       const editorSystemPrompt = buildAgentSystemPrompt(editor, context)
       const editorUserPrompt = buildEditorPrompt(pdMessage, writerMessage)
       const editorMessage = await callAgent(editor, editorSystemPrompt, editorUserPrompt)
 
-      log.push({
+      const editorEntry: DiscussionLogEntry = {
         round,
         agent_id: editor.id,
         agent_name: editor.name,
         agent_role: 'editor',
         message: editorMessage,
         timestamp: new Date().toISOString(),
-      })
+      }
+      log.push(editorEntry)
+      onProgress?.({ type: 'agent_message', entry: editorEntry })
 
       // 라운드 완료 시 DB 업데이트
       await supabase
@@ -230,6 +274,8 @@ export async function runDiscussion(
     }
 
     // 5. 토론 요약 생성
+    onProgress?.({ type: 'summary_generating' })
+
     const fullLog = log
       .map(
         (entry) =>
@@ -252,12 +298,16 @@ export async function runDiscussion(
       })
       .eq('id', discussionId)
 
-    return {
+    const result: DiscussionResult = {
       discussionId,
       summary,
       totalRounds: MAX_ROUNDS,
       log,
     }
+
+    onProgress?.({ type: 'completed', result })
+
+    return result
   } catch (error) {
     // 실패 시 상태 업데이트
     await supabase
@@ -268,6 +318,8 @@ export async function runDiscussion(
         total_rounds: log.length > 0 ? log[log.length - 1].round : 0,
       })
       .eq('id', discussionId)
+
+    onProgress?.({ type: 'error', error: error instanceof Error ? error.message : 'Unknown error' })
 
     throw error
   }

@@ -244,6 +244,66 @@ describe('runDiscussion', () => {
     expect(result.log[3].agent_role).toBe('pd')
     expect(result.log[3].round).toBe(2)
   })
+
+  it('onProgress 콜백이 올바른 순서로 15개 이벤트를 호출한다', async () => {
+    const supabase = createMockSupabase()
+    const events: Array<{ type: string }> = []
+    const onProgress = vi.fn((event: { type: string }) => {
+      events.push(event)
+    })
+
+    await runDiscussion(supabase as never, 'story-1', 'user-1', [], onProgress)
+
+    // started(1) + (speaking + message) x 3 agents x 2 rounds(12) + summary_generating(1) + completed(1) = 15
+    expect(onProgress).toHaveBeenCalledTimes(15)
+
+    const types = events.map((e) => e.type)
+    expect(types[0]).toBe('started')
+    // 라운드 1: speaking, message x 3
+    expect(types[1]).toBe('agent_speaking')
+    expect(types[2]).toBe('agent_message')
+    expect(types[3]).toBe('agent_speaking')
+    expect(types[4]).toBe('agent_message')
+    expect(types[5]).toBe('agent_speaking')
+    expect(types[6]).toBe('agent_message')
+    // 라운드 2: speaking, message x 3
+    expect(types[7]).toBe('agent_speaking')
+    expect(types[8]).toBe('agent_message')
+    expect(types[9]).toBe('agent_speaking')
+    expect(types[10]).toBe('agent_message')
+    expect(types[11]).toBe('agent_speaking')
+    expect(types[12]).toBe('agent_message')
+    // 요약 + 완료
+    expect(types[13]).toBe('summary_generating')
+    expect(types[14]).toBe('completed')
+  })
+
+  it('onProgress 없이 호출해도 기존 동작이 유지된다', async () => {
+    const supabase = createMockSupabase()
+
+    const result = await runDiscussion(supabase as never, 'story-1', 'user-1', [])
+
+    expect(result.discussionId).toBe('disc-1')
+    expect(result.totalRounds).toBe(2)
+    expect(result.log).toHaveLength(6)
+  })
+
+  it('AI 호출 실패 시 onProgress에 error 이벤트가 발생한다', async () => {
+    mockChatCreate.mockRejectedValue(new Error('AI 서버 에러'))
+    const supabase = createMockSupabase()
+    const events: Array<{ type: string; error?: string }> = []
+    const onProgress = vi.fn((event: { type: string; error?: string }) => {
+      events.push(event)
+    })
+
+    await expect(
+      runDiscussion(supabase as never, 'story-1', 'user-1', [], onProgress),
+    ).rejects.toThrow('AI 서버 에러')
+
+    const errorEvents = events.filter((e) => e.type === 'error')
+    expect(errorEvents).toHaveLength(1)
+    expect(errorEvents[0].error).toBe('AI 서버 에러')
+  })
 })
 
 // ============================================
