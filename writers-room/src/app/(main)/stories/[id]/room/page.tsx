@@ -11,6 +11,8 @@ import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/s
 import { useStory } from '@/features/story/hooks/use-stories'
 import { useAuth } from '@/hooks/use-auth'
 import { useStoryAgents, useLatestDiscussion, useRoomActions } from '@/features/room/hooks/use-room'
+import { useCredits } from '@/features/credit/hooks/use-credits'
+import { CREDIT_COSTS } from '@/features/credit/lib/constants'
 import { AgentSidebar } from '@/features/room/components/agent-sidebar'
 import { DiscussionLog } from '@/features/room/components/discussion-log'
 import { DiscussionSummary } from '@/features/room/components/discussion-summary'
@@ -29,6 +31,7 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
   const { story, isLoading: storyLoading } = useStory(storyId)
   const { storyAgents, isLoading: agentsLoading } = useStoryAgents(storyId)
   const { discussion: latestDiscussion } = useLatestDiscussion(storyId)
+  const { credits, refreshCredits } = useCredits()
 
   const {
     startDiscussion,
@@ -144,7 +147,8 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
       setDiscussionResult(result)
       setDiscussionLog(result.log)
     }
-  }, [storyId, startDiscussion])
+    refreshCredits()
+  }, [storyId, startDiscussion, refreshCredits])
 
   const handleSubmitFeedback = useCallback(async () => {
     if (!effectiveResult || !feedbackText.trim()) return
@@ -160,7 +164,8 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
       setDiscussionLog(result.log)
       setFeedbackText('')
     }
-  }, [effectiveResult, feedbackText, submitFeedback])
+    refreshCredits()
+  }, [effectiveResult, feedbackText, submitFeedback, refreshCredits])
 
   const handleGenerateChapter = useCallback(async () => {
     if (!effectiveResult) return
@@ -168,7 +173,8 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
     if (chapter) {
       setGeneratedChapter(chapter)
     }
-  }, [effectiveResult, generateChapter])
+    refreshCredits()
+  }, [effectiveResult, generateChapter, refreshCredits])
 
   const handlePublish = useCallback(
     async (title: string, content: string) => {
@@ -249,6 +255,14 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
           <h1 className="text-lg font-bold">{story.title}</h1>
           <p className="text-muted-foreground text-sm">작가방</p>
         </div>
+
+        {/* 크레딧 잔액 */}
+        {credits && (
+          <div className="text-muted-foreground flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm">
+            <span className="text-foreground font-medium">{credits.totalCredits}</span>
+            <span>크레딧</span>
+          </div>
+        )}
 
         {/* 데스크탑 사이드바 토글 */}
         <Button
@@ -347,11 +361,14 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
                     <Button
                       size="sm"
                       onClick={handleSubmitFeedback}
-                      disabled={!feedbackText.trim()}
+                      disabled={
+                        !feedbackText.trim() ||
+                        (credits !== null && credits.totalCredits < CREDIT_COSTS.SUBMIT_FEEDBACK)
+                      }
                       className="gap-1.5"
                     >
                       <Send className="h-3.5 w-3.5" />
-                      피드백 반영
+                      피드백 반영 ({CREDIT_COSTS.SUBMIT_FEEDBACK})
                     </Button>
                   </div>
                 </div>
@@ -391,22 +408,29 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
           <div className="bg-background mt-3 flex shrink-0 items-center gap-2 border-t pt-3">
             <Button
               onClick={handleStartDiscussion}
-              disabled={isDiscussing || agentsLoading}
+              disabled={
+                isDiscussing ||
+                agentsLoading ||
+                (credits !== null && credits.totalCredits < CREDIT_COSTS.START_DISCUSSION)
+              }
               className="gap-1.5"
             >
               <MessageSquare className="h-4 w-4" />
-              {isDiscussing ? '토론 진행 중...' : '토론 시작'}
+              {isDiscussing ? '토론 진행 중...' : `토론 시작 (${CREDIT_COSTS.START_DISCUSSION})`}
             </Button>
 
             {effectiveResult && !generatedChapter && (
               <Button
                 onClick={handleGenerateChapter}
-                disabled={isGenerating}
+                disabled={
+                  isGenerating ||
+                  (credits !== null && credits.totalCredits < CREDIT_COSTS.GENERATE_CHAPTER)
+                }
                 variant="secondary"
                 className="gap-1.5"
               >
                 <Wand2 className="h-4 w-4" />
-                {isGenerating ? '생성 중...' : '챕터 초안 생성'}
+                {isGenerating ? '생성 중...' : `챕터 초안 생성 (${CREDIT_COSTS.GENERATE_CHAPTER})`}
               </Button>
             )}
           </div>

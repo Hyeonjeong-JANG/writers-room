@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { GenerateChapterSchema } from '@/features/room/lib/schemas'
 import { generateChapter } from '@/features/room/lib/orchestrator'
+import { deductCredits, InsufficientCreditsError } from '@/features/credit/lib/deduct'
 
 export const maxDuration = 60
 
@@ -71,6 +72,26 @@ export async function POST(request: NextRequest) {
         { error: { code: 'FORBIDDEN', message: '스토리 작성자만 챕터를 생성할 수 있습니다' } },
         { status: 403 },
       )
+    }
+
+    // 크레딧 차감 (선차감)
+    try {
+      await deductCredits(supabase, user.id, 'GENERATE_CHAPTER')
+    } catch (e) {
+      if (e instanceof InsufficientCreditsError) {
+        return NextResponse.json(
+          {
+            error: {
+              code: 'INSUFFICIENT_CREDITS',
+              message: `크레딧이 부족합니다 (필요: ${e.required}, 잔액: ${e.available})`,
+              required: e.required,
+              available: e.available,
+            },
+          },
+          { status: 402 },
+        )
+      }
+      throw e
     }
 
     const result = await generateChapter(supabase, discussionId)

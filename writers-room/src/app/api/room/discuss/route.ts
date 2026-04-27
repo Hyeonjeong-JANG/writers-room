@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { StartDiscussionSchema, FeedbackRoundSchema } from '@/features/room/lib/schemas'
 import { runDiscussion, runFeedbackRound, type OnProgress } from '@/features/room/lib/orchestrator'
+import { deductCredits, InsufficientCreditsError } from '@/features/credit/lib/deduct'
 
 export const maxDuration = 60
 
@@ -107,6 +108,26 @@ export async function POST(request: NextRequest) {
       { error: { code: 'FORBIDDEN', message: '스토리 작성자만 토론을 시작할 수 있습니다' } },
       { status: 403 },
     )
+  }
+
+  // 크레딧 차감 (선차감)
+  try {
+    await deductCredits(supabase, user.id, 'START_DISCUSSION')
+  } catch (e) {
+    if (e instanceof InsufficientCreditsError) {
+      return NextResponse.json(
+        {
+          error: {
+            code: 'INSUFFICIENT_CREDITS',
+            message: `크레딧이 부족합니다 (필요: ${e.required}, 잔액: ${e.available})`,
+            required: e.required,
+            available: e.available,
+          },
+        },
+        { status: 402 },
+      )
+    }
+    throw e
   }
 
   // SSE 스트림 생성
@@ -219,6 +240,26 @@ export async function PATCH(request: NextRequest) {
       { error: { code: 'INVALID_STATE', message: '완료된 토론에만 피드백을 추가할 수 있습니다' } },
       { status: 400 },
     )
+  }
+
+  // 크레딧 차감 (선차감)
+  try {
+    await deductCredits(supabase, user.id, 'SUBMIT_FEEDBACK')
+  } catch (e) {
+    if (e instanceof InsufficientCreditsError) {
+      return NextResponse.json(
+        {
+          error: {
+            code: 'INSUFFICIENT_CREDITS',
+            message: `크레딧이 부족합니다 (필요: ${e.required}, 잔액: ${e.available})`,
+            required: e.required,
+            available: e.available,
+          },
+        },
+        { status: 402 },
+      )
+    }
+    throw e
   }
 
   // SSE 스트림 생성
