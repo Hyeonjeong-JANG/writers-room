@@ -9,7 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet'
 import { useStory } from '@/features/story/hooks/use-stories'
 import { useAuth } from '@/hooks/use-auth'
-import { useStoryAgents, useRoomActions } from '@/features/room/hooks/use-room'
+import { useStoryAgents, useLatestDiscussion, useRoomActions } from '@/features/room/hooks/use-room'
 import { AgentSidebar } from '@/features/room/components/agent-sidebar'
 import { DiscussionLog } from '@/features/room/components/discussion-log'
 import { DiscussionSummary } from '@/features/room/components/discussion-summary'
@@ -27,6 +27,7 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
   const { user } = useAuth()
   const { story, isLoading: storyLoading } = useStory(storyId)
   const { storyAgents, isLoading: agentsLoading } = useStoryAgents(storyId)
+  const { discussion: latestDiscussion } = useLatestDiscussion(storyId)
 
   const {
     startDiscussion,
@@ -47,6 +48,18 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
   const autoStartTriggered = useRef(false)
 
   const isCreator = user && story && user.id === story.creator_id
+
+  // DB에서 복원한 토론 또는 방금 시작한 토론
+  const restoredResult = latestDiscussion
+    ? {
+        discussionId: latestDiscussion.id,
+        summary: latestDiscussion.summary ?? '',
+        totalRounds: latestDiscussion.total_rounds,
+        log: latestDiscussion.discussion_log ?? [],
+      }
+    : null
+  const effectiveResult = discussionResult ?? restoredResult
+  const effectiveLog = discussionLog.length > 0 ? discussionLog : (restoredResult?.log ?? [])
 
   // autostart=true 파라미터로 진입 시 자동 토론 + 챕터 생성
   useEffect(() => {
@@ -117,16 +130,16 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
   }, [storyId, startDiscussion])
 
   const handleGenerateChapter = useCallback(async () => {
-    if (!discussionResult) return
-    const chapter = await generateChapter(discussionResult.discussionId)
+    if (!effectiveResult) return
+    const chapter = await generateChapter(effectiveResult.discussionId)
     if (chapter) {
       setGeneratedChapter(chapter)
     }
-  }, [discussionResult, generateChapter])
+  }, [effectiveResult, generateChapter])
 
   const handlePublish = useCallback(
     async (title: string, content: string) => {
-      if (!discussionResult) return
+      if (!effectiveResult) return
       setIsPublishing(true)
       try {
         const res = await fetch(`/api/stories/${storyId}/chapters`, {
@@ -135,7 +148,7 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
           body: JSON.stringify({
             title,
             content,
-            discussionId: discussionResult.discussionId,
+            discussionId: effectiveResult.discussionId,
           }),
         })
         if (res.ok) {
@@ -145,7 +158,7 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
         setIsPublishing(false)
       }
     },
-    [storyId, discussionResult, router],
+    [storyId, effectiveResult, router],
   )
 
   // 로딩 상태
@@ -241,7 +254,7 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
         <div className="flex min-w-0 flex-1 flex-col">
           {/* 토론 로그 */}
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border">
-            <DiscussionLog log={discussionLog} isLoading={isDiscussing} />
+            <DiscussionLog log={effectiveLog} isLoading={isDiscussing} />
           </div>
 
           {/* 에러 표시 */}
@@ -252,22 +265,22 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
           )}
 
           {/* 토론 요약 */}
-          {discussionResult?.summary && (
+          {effectiveResult?.summary && (
             <div className="mt-3">
               <DiscussionSummary
-                summary={discussionResult.summary}
-                totalRounds={discussionResult.totalRounds}
+                summary={effectiveResult.summary}
+                totalRounds={effectiveResult.totalRounds}
               />
             </div>
           )}
 
           {/* 챕터 미리보기 */}
-          {generatedChapter && discussionResult && (
+          {generatedChapter && effectiveResult && (
             <div className="mt-3">
               <ChapterPreview
                 chapter={generatedChapter}
                 storyId={storyId}
-                discussionId={discussionResult.discussionId}
+                discussionId={effectiveResult.discussionId}
                 onPublish={handlePublish}
                 isPublishing={isPublishing}
               />
@@ -293,7 +306,7 @@ export default function RoomPage({ params }: { params: Promise<{ id: string }> }
               {isDiscussing ? '토론 진행 중...' : '토론 시작'}
             </Button>
 
-            {discussionResult && !generatedChapter && (
+            {effectiveResult && !generatedChapter && (
               <Button
                 onClick={handleGenerateChapter}
                 disabled={isGenerating}

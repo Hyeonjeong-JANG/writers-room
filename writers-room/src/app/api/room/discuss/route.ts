@@ -5,6 +5,47 @@ import { runDiscussion } from '@/features/room/lib/orchestrator'
 
 export const maxDuration = 60
 
+// GET /api/room/discuss?storyId=xxx - 스토리의 최신 토론 조회
+export async function GET(request: NextRequest) {
+  try {
+    const storyId = request.nextUrl.searchParams.get('storyId')
+    if (!storyId) {
+      return NextResponse.json(
+        { error: { code: 'VALIDATION_ERROR', message: 'storyId가 필요합니다' } },
+        { status: 400 },
+      )
+    }
+
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      return NextResponse.json(
+        { error: { code: 'UNAUTHORIZED', message: '로그인이 필요합니다' } },
+        { status: 401 },
+      )
+    }
+
+    const { data: discussion } = await supabase
+      .from('discussions')
+      .select('*')
+      .eq('story_id', storyId)
+      .in('status', ['completed', 'in_progress'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single()
+
+    return NextResponse.json({ data: discussion ?? null })
+  } catch {
+    return NextResponse.json(
+      { error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } },
+      { status: 500 },
+    )
+  }
+}
+
 // POST /api/room/discuss - 토론 시작 (스토리 creator만)
 export async function POST(request: NextRequest) {
   try {

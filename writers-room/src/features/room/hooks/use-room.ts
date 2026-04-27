@@ -27,6 +27,20 @@ export function useStoryAgents(storyId: string) {
   }
 }
 
+// 스토리의 최신 토론 조회
+export function useLatestDiscussion(storyId: string) {
+  const { data, error, isLoading } = useSWR<{ data: DiscussionRow | null }>(
+    storyId ? `/api/room/discuss?storyId=${storyId}` : null,
+    fetcher,
+  )
+
+  return {
+    discussion: data?.data ?? null,
+    isLoading,
+    error,
+  }
+}
+
 // 토론 상세 조회
 export function useDiscussion(discussionId: string | null) {
   const { data, error, isLoading, mutate } = useSWR<{ data: DiscussionRow }>(
