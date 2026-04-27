@@ -2,7 +2,7 @@
 
 import { use, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Star, Users, Zap, BookOpen } from 'lucide-react'
+import { ArrowLeft, Star, Users, Zap, BookOpen, Eye } from 'lucide-react'
 import { toast } from 'sonner'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -42,6 +42,11 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
   const [rating, setRating] = useState(5)
   const [reviewText, setReviewText] = useState('')
 
+  // 프리뷰 상태
+  const [showPreview, setShowPreview] = useState(false)
+  const [previewOutput, setPreviewOutput] = useState<string | null>(null)
+  const [isPreviewing, setIsPreviewing] = useState(false)
+
   // 고용 플로우 상태
   const [showStorySelect, setShowStorySelect] = useState(false)
   const [selectedStoryId, setSelectedStoryId] = useState<string | null>(null)
@@ -71,6 +76,25 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
         </Link>
       </div>
     )
+  }
+
+  const handlePreview = async () => {
+    setShowPreview(true)
+    setPreviewOutput(null)
+    setIsPreviewing(true)
+    try {
+      const res = await fetch(`/api/agents/${id}/preview`, { method: 'POST' })
+      if (res.ok) {
+        const json = await res.json()
+        setPreviewOutput(json.data.output)
+      } else {
+        setPreviewOutput('미리보기 생성에 실패했습니다.')
+      }
+    } catch {
+      setPreviewOutput('미리보기 생성에 실패했습니다.')
+    } finally {
+      setIsPreviewing(false)
+    }
   }
 
   const handleHireClick = () => {
@@ -200,9 +224,20 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
               <span className="text-muted-foreground text-sm">모델: {agent.model}</span>
             </div>
             {user && (
-              <Button onClick={handleHireClick} disabled={isHiring} className="w-full sm:w-auto">
-                {isHiring ? '처리 중...' : '고용하기'}
-              </Button>
+              <div className="flex w-full gap-2 sm:w-auto">
+                <Button
+                  variant="outline"
+                  onClick={handlePreview}
+                  disabled={isPreviewing}
+                  className="gap-1.5"
+                >
+                  <Eye className="h-4 w-4" />
+                  미리보기
+                </Button>
+                <Button onClick={handleHireClick} disabled={isHiring}>
+                  {isHiring ? '처리 중...' : '고용하기'}
+                </Button>
+              </div>
             )}
           </div>
         </CardContent>
@@ -326,6 +361,28 @@ export default function AgentDetailPage({ params }: { params: Promise<{ id: stri
           amount={agent.price_usdc}
         />
       )}
+
+      {/* 프리뷰 다이얼로그 */}
+      <Dialog open={showPreview} onOpenChange={setShowPreview}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{agent.name} 샘플 출력</DialogTitle>
+            <DialogDescription>
+              샘플 스토리에 대한 에이전트의 응답 미리보기입니다.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[400px] overflow-y-auto rounded-md border p-4">
+            {isPreviewing ? (
+              <div className="text-muted-foreground flex items-center gap-2 text-sm">
+                <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                에이전트가 응답을 생성 중...
+              </div>
+            ) : (
+              <p className="text-sm whitespace-pre-wrap">{previewOutput}</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
