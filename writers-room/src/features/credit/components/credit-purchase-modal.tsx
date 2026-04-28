@@ -242,10 +242,10 @@ export function CreditPurchaseModal({ isOpen, onClose, onSuccess }: CreditPurcha
         {step === 'error' && (
           <div className="flex flex-col items-center gap-4 py-6">
             <XCircle className="h-12 w-12 text-red-500" />
-            <div className="text-center">
+            <div className="w-full text-center">
               <p className="text-lg font-medium">충전 실패</p>
-              <p className="text-muted-foreground mt-1 text-sm">
-                {error ?? '알 수 없는 오류가 발생했습니다'}
+              <p className="text-muted-foreground mt-1 line-clamp-3 text-sm break-words">
+                {error?.split('\n')[0] ?? '알 수 없는 오류가 발생했습니다'}
               </p>
             </div>
             <div className="flex w-full gap-2">
